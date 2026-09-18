@@ -1,26 +1,324 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+
+  --color-primary: #064e3b;
+  --color-primary-container: #047857;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #ecfdf5;
+  --color-secondary: #059669;
+  --color-secondary-container: #d1fae5;
+  --color-on-secondary-container: #064e3b;
+  --color-surface: #ffffff;
+  --color-surface-variant: #e5e7eb;
+  --color-on-surface: #0f172a;
+  --color-on-surface-variant: #64748b;
+  --color-surface-container: #f8fafc;
+  --color-surface-container-high: #f1f5f9;
+  --color-surface-container-lowest: #ffffff;
+  --color-outline: #94a3b8;
+  --color-outline-variant: #e2e8f0;
+  --color-tertiary: #2563eb;
+  --color-error: #e11d48;
+  --color-gold: #f59e0b;
+  --color-mint: #10b981;
+  --color-ink: #0f172a;
+  --color-emerald-deep: #064e3b;
+  --color-mint-band: #ecfdf5;
+
+  --spacing-margin-mobile: 1rem;
+  --spacing-margin-desktop: 1.75rem;
+  --spacing-container-max: 1200px;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #e2e8f0;
+
+  --color-primary: #34d399;
+  --color-primary-container: #064e3b;
+  --color-on-primary: #022c22;
+  --color-on-primary-container: #d1fae5;
+  --color-secondary: #6ee7b7;
+  --color-secondary-container: #064e3b;
+  --color-on-secondary-container: #d1fae5;
+  --color-surface: #020617;
+  --color-surface-variant: #1e293b;
+  --color-on-surface: #e2e8f0;
+  --color-on-surface-variant: #94a3b8;
+  --color-surface-container: #0f172a;
+  --color-surface-container-high: #1e293b;
+  --color-surface-container-lowest: #020617;
+  --color-outline: #64748b;
+  --color-outline-variant: #334155;
+  --color-tertiary: #93c5fd;
+  --color-error: #fb7185;
+  --color-gold: #fbbf24;
+  --color-mint: #34d399;
+  --color-ink: #e2e8f0;
+  --color-emerald-deep: #064e3b;
+  --color-mint-band: #022c22;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plus-jakarta-sans), var(--font-hind-siliguri), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-outfit), var(--font-plus-jakarta-sans), var(--font-hind-siliguri), -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-primary: var(--color-primary);
+  --color-primary-container: var(--color-primary-container);
+  --color-on-primary: var(--color-on-primary);
+  --color-on-primary-container: var(--color-on-primary-container);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-container: var(--color-secondary-container);
+  --color-on-secondary-container: var(--color-on-secondary-container);
+  --color-surface: var(--color-surface);
+  --color-surface-variant: var(--color-surface-variant);
+  --color-on-surface: var(--color-on-surface);
+  --color-on-surface-variant: var(--color-on-surface-variant);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-high: var(--color-surface-container-high);
+  --color-surface-container-lowest: var(--color-surface-container-lowest);
+  --color-outline: var(--color-outline);
+  --color-outline-variant: var(--color-outline-variant);
+  --color-tertiary: var(--color-tertiary);
+  --color-error: var(--color-error);
+  --color-gold: var(--color-gold);
+  --color-mint: var(--color-mint);
+  --color-ink: var(--color-ink);
+  --color-emerald-deep: var(--color-emerald-deep);
+  --color-mint-band: var(--color-mint-band);
+
+  --spacing-margin-mobile: 1rem;
+  --spacing-margin-desktop: 1.75rem;
+  --spacing-container-max: 1200px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.font-display { font-family: var(--font-display); }
+
+.text-headline-lg { font-size: 2.75rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.03em; }
+.text-headline-lg-mobile { font-size: 2rem; line-height: 1.15; font-weight: 800; letter-spacing: -0.025em; }
+.text-headline-md { font-size: 1.25rem; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; }
+.text-headline-sm { font-size: 1.125rem; line-height: 1.35; font-weight: 700; }
+.text-title-md { font-size: 1rem; line-height: 1.4; font-weight: 600; }
+.text-body-lg { font-size: 1rem; line-height: 1.55; }
+.text-body-md { font-size: 0.9375rem; line-height: 1.5; }
+.text-body-sm { font-size: 0.8125rem; line-height: 1.45; }
+.text-label-sm { font-size: 0.75rem; line-height: 1.3; font-weight: 600; }
+.text-label-md { font-size: 0.8125rem; line-height: 1.3; font-weight: 600; }
+.text-price-display {
+  font-size: 1.05rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-family: var(--font-display);
+}
+
+.px-margin-mobile { padding-left: var(--spacing-margin-mobile); padding-right: var(--spacing-margin-mobile); }
+@media (min-width: 768px) {
+  .md\:px-margin-desktop {
+    padding-left: var(--spacing-margin-desktop);
+    padding-right: var(--spacing-margin-desktop);
+  }
+}
+.max-w-container-max { max-width: var(--spacing-container-max); }
+
+.hero-stage {
+  background:
+    radial-gradient(ellipse 70% 80% at 85% 40%, rgba(186, 230, 253, 0.55), transparent 55%),
+    radial-gradient(ellipse 50% 60% at 15% 20%, rgba(209, 250, 229, 0.45), transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.dark .hero-stage {
+  background:
+    radial-gradient(ellipse 70% 80% at 85% 40%, rgba(6, 78, 59, 0.45), transparent 55%),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+}
+
+.glass-nav {
+  background: #064e3b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-nav {
+  background: #022c22;
+  border-bottom: 1px solid rgba(52, 211, 153, 0.15);
+}
+
+.card-glow {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.card-glow:hover {
+  border-color: rgba(6, 78, 59, 0.25);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.mint-band {
+  background: var(--color-mint-band);
+}
+
+.search-shell {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+}
+
+.dark .search-shell {
+  background: #0f172a;
+  border-color: #334155;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Slow-Motion Infinite Sliding Marquee */
+@keyframes slowMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-slow-marquee {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: slowMarquee 38s linear infinite;
+}
+
+/* Pause immediately when cursor is anywhere over the slider area or cards */
+.slider-container:hover .animate-slow-marquee,
+.animate-slow-marquee:hover,
+.animate-slow-marquee a:hover,
+.animate-slow-marquee:hover * {
+  animation-play-state: paused !important;
+}
+
+/* ===================================================
+   macOS Exact Target Morph: Open from Button & Collapse into Button
+   =================================================== */
+@keyframes macFolderOpenFromButton {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--origin-x, 0px), var(--origin-y, 250px), 0) scale(var(--origin-scale-x, 0.15), var(--origin-scale-y, 0.08));
+    filter: blur(5px);
+    border-radius: 14px;
+  }
+  40% {
+    opacity: 0.85;
+    filter: blur(0.5px);
+  }
+  78% {
+    opacity: 1;
+    transform: translate3d(calc(var(--origin-x, 0px) * -0.02), calc(var(--origin-y, 250px) * -0.02), 0) scale(1.018, 1.015);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    filter: blur(0px);
+    border-radius: 24px;
+  }
+}
+
+@keyframes macFolderCloseToButton {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    filter: blur(0px);
+    border-radius: 24px;
+  }
+  25% {
+    opacity: 0.96;
+    transform: translate3d(calc(var(--origin-x, 0px) * 0.18), calc(var(--origin-y, 250px) * 0.18), 0) scale(0.86, 0.82);
+  }
+  60% {
+    opacity: 0.72;
+    transform: translate3d(calc(var(--origin-x, 0px) * 0.65), calc(var(--origin-y, 250px) * 0.65), 0) scale(calc(var(--origin-scale-x, 0.15) * 2.1), calc(var(--origin-scale-y, 0.08) * 2.1));
+    filter: blur(1.5px);
+  }
+  88% {
+    opacity: 0.25;
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--origin-x, 0px), var(--origin-y, 250px), 0) scale(var(--origin-scale-x, 0.15), var(--origin-scale-y, 0.08));
+    filter: blur(5px);
+    border-radius: 14px;
+  }
+}
+
+@keyframes macBackdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes macBackdropFadeOut {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+.animate-mac-open {
+  animation: macFolderOpenFromButton 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+}
+
+.animate-mac-close {
+  animation: macFolderCloseToButton 0.34s cubic-bezier(0.25, 0.9, 0.3, 1) forwards;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+}
+
+.animate-mac-backdrop-in {
+  animation: macBackdropFadeIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-mac-backdrop-out {
+  animation: macBackdropFadeOut 0.32s cubic-bezier(0.25, 0.9, 0.3, 1) forwards;
 }
