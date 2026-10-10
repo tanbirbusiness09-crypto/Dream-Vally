@@ -3,6 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  PlusCircle,
+  PackageCheck,
+  ShoppingBag,
+  Store,
+  ArrowLeft,
+  Bell
+} from 'lucide-react';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,71 +23,83 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   }
 
   const navItems = [
-    { name: 'Dashboard', href: '/seller/dashboard', icon: '📊' },
-    { name: 'Verification', href: '/seller/verification', icon: '🛡️' },
-    { name: 'Add Product', href: '/seller/add-product', icon: '➕' },
-    { name: 'My Products', href: '/seller/products', icon: '📦' },
-    { name: 'Orders', href: '/seller/orders', icon: '🛒' },
-    { name: 'View Shop', href: '/shop/demo-shop-123', icon: '🏪' },
+    { name: 'Dashboard', href: '/seller/dashboard', icon: LayoutDashboard },
+    { name: 'Verification', href: '/seller/verification', icon: ShieldCheck },
+    { name: 'Add Product', href: '/seller/add-product', icon: PlusCircle },
+    { name: 'My Products', href: '/seller/products', icon: PackageCheck },
+    { name: 'Orders', href: '/seller/orders', icon: ShoppingBag },
+    { name: 'View Shop', href: '/shop/demo-shop-123', icon: Store },
   ];
 
   return (
     <div className="flex min-h-screen bg-surface">
       {/* Seller Sidebar */}
-      <aside className="w-64 bg-surface-container-lowest border-r border-outline-variant flex flex-col">
+      <aside className="w-64 bg-surface-container-lowest border-r border-outline-variant flex flex-col shrink-0">
         <div className="p-6 border-b border-outline-variant">
-          <h2 className="text-xl font-bold text-primary">Seller Central</h2>
-          <p className="text-xs text-on-surface-variant mt-1">Stitch Marketplace</p>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#064e3b] flex items-center justify-center text-[#D4AF37] font-black text-sm shadow-sm">
+              DV
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-foreground tracking-tight">Seller Central</h2>
+              <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Dreamvally Hub</p>
+            </div>
+          </div>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-1.5">
           {navItems.map((item) => {
+            const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all ${
                   isActive 
-                    ? 'bg-primary-container text-on-primary-container' 
-                    : 'text-on-surface hover:bg-surface-container'
+                    ? 'bg-[#00895e] text-white shadow-sm' 
+                    : 'text-on-surface hover:bg-surface-container hover:text-foreground'
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
-                {item.name}
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-on-surface-variant'}`} />
+                <span>{item.name}</span>
               </Link>
             );
           })}
         </nav>
         <div className="p-4 border-t border-outline-variant">
-          <Link href="/" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">
-            <span className="text-lg">⬅️</span> Back to Main Site
+          <Link href="/" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors text-xs font-bold">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Main Marketplace</span>
           </Link>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Header */}
-        <header className="h-16 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-8 shrink-0">
-          <h1 className="text-xl font-semibold text-foreground capitalize">
+        <header className="h-16 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-6 sm:px-8 shrink-0">
+          <h1 className="text-lg sm:text-xl font-extrabold text-foreground capitalize">
             {pathname.split('/').pop()?.replace('-', ' ')}
           </h1>
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
-              🔔
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+          <div className="flex items-center gap-3.5">
+            <button className="relative p-2 text-on-surface-variant hover:bg-surface-container rounded-xl transition-colors">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
             </button>
-            <div className="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full cursor-pointer border border-outline-variant">
-              <div className="w-7 h-7 bg-primary text-on-primary rounded-full flex items-center justify-center font-bold text-xs">
-                JD
+            <div className="flex items-center gap-2.5 bg-surface-container px-3 py-1.5 rounded-full cursor-pointer border border-outline-variant hover:border-[#00895e]/50 transition-colors">
+              <div className="w-7 h-7 bg-[#00895e] text-white rounded-full flex items-center justify-center font-black text-xs shadow-xs">
+                DF
               </div>
-              <span className="text-sm font-medium pr-1">Dream Fashion</span>
+              <div className="text-left hidden sm:block">
+                <span className="text-xs font-bold block leading-none text-foreground">Dream Fashion</span>
+                <span className="text-[10px] text-muted-foreground font-semibold">Verified Merchant</span>
+              </div>
             </div>
           </div>
         </header>
 
         {/* Scrollable Page Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-surface">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-surface">
           {children}
         </div>
       </main>
