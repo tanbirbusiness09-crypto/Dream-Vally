@@ -4,21 +4,18 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
+  ArrowLeft,
+  UploadCloud,
   Plus,
   Trash2,
-  UploadCloud,
-  CheckCircle2,
-  Globe2,
-  DollarSign,
-  Truck,
   Sparkles,
-  Info,
-  X,
-  Layers,
-  ArrowLeft,
-  Boxes,
   ShieldCheck,
-  Tag
+  Truck,
+  Globe2,
+  Boxes,
+  Tag,
+  DollarSign,
+  X
 } from 'lucide-react';
 
 interface Variant {
@@ -97,33 +94,35 @@ export default function AddProductPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-20 space-y-7 animate-in fade-in duration-300">
+    <div className="max-w-6xl mx-auto pb-12 space-y-4 animate-in fade-in duration-200">
       
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-emerald-950/20 via-emerald-900/10 to-transparent p-6 sm:p-7 rounded-3xl border border-emerald-900/20 dark:border-white/10 backdrop-blur-md">
+      {/* 1. Compact Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-border/60">
         <div>
-          <Link
-            href="/seller/products"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-[#00895e] mb-2 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Inventory Hub</span>
-          </Link>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-            List a New Product
-          </h1>
-          <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
-            Publish your items with multi-market pricing, rich photos, and variant stock control.
+          <div className="flex items-center gap-2">
+            <Link
+              href="/seller/products"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Back to Products"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              Add New Product
+            </h1>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+            Create a new listing with multi-market pricing, variants, and high-res media.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => alert('Product saved as Draft!')}
-            className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl border border-outline-variant hover:bg-surface-container font-semibold text-xs sm:text-sm text-foreground transition-all"
+            className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg border border-border/70 hover:bg-muted font-medium text-xs text-foreground transition-colors"
           >
-            Save as Draft
+            Save Draft
           </button>
           <button
             type="button"
@@ -131,202 +130,200 @@ export default function AddProductPage() {
               alert('Product successfully published to Dreamvally Marketplace!');
               window.location.href = '/seller/products';
             }}
-            className="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00895e] to-[#064e3b] hover:from-[#00744f] hover:to-[#043e2e] text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5"
           >
-            <Sparkles className="w-4 h-4 text-[#D4AF37]" />
-            <span>Publish Listing</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Publish Product</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* Left Column: Main Form (8 Cols) */}
-        <div className="lg:col-span-8 space-y-7">
+        {/* Left Column: Form Fields (8 Cols) */}
+        <div className="lg:col-span-8 space-y-4">
           
           {/* 1. Basic Information */}
-          <div className="bg-surface-container-lowest border border-outline-variant/80 rounded-3xl p-6 sm:p-7 shadow-sm space-y-5">
-            <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
-              <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Tag className="w-4 h-4 text-[#00895e]" />
-                <span>Basic Information</span>
+          <div className="bg-card border border-border/60 rounded-xl p-4 sm:p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Basic Details</span>
               </h2>
-              <span className="text-xs text-muted-foreground font-semibold">* Required fields</span>
+              <span className="text-[11px] text-muted-foreground">* Required fields</span>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium text-foreground mb-1">
                 Product Title *
               </label>
               <input
                 type="text"
                 value={productTitle}
                 onChange={(e) => setProductTitle(e.target.value)}
-                placeholder="e.g. Exclusive Embroidered Cotton Panjabi - Festive Edition"
-                className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[#00895e]"
+                placeholder="e.g. Exclusive Embroidered Cotton Panjabi"
+                className="w-full px-3 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
+                <label className="block text-xs font-medium text-foreground mb-1">
                   Category *
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[#00895e]"
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
-                  <option value="Clothing & Fashion">Clothing &amp; Fashion</option>
-                  <option value="Electronics & Mobiles">Electronics &amp; Mobiles</option>
-                  <option value="Laptops & Computers">Laptops &amp; Computers</option>
-                  <option value="Vehicles & Motors">Vehicles &amp; Motors</option>
-                  <option value="Properties & Real Estate">Properties &amp; Real Estate</option>
+                  <option value="Clothing & Fashion">Clothing & Fashion</option>
+                  <option value="Electronics & Mobiles">Electronics & Mobiles</option>
+                  <option value="Laptops & Computers">Laptops & Computers</option>
+                  <option value="Vehicles & Motors">Vehicles & Motors</option>
+                  <option value="Properties & Real Estate">Properties & Real Estate</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
+                <label className="block text-xs font-medium text-foreground mb-1">
                   Brand / Manufacturer
                 </label>
                 <input
                   type="text"
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
-                  placeholder="e.g. Dream Fashion / Apple / Yamaha"
-                  className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[#00895e]"
+                  placeholder="e.g. Dream Fashion / Apple"
+                  className="w-full px-3 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
-                Detailed Product Description *
+              <label className="block text-xs font-medium text-foreground mb-1">
+                Product Description *
               </label>
               <textarea
-                rows={5}
+                rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe material, specifications, sizing guide, authenticity guarantees, and box contents..."
-                className="w-full px-4 py-3 rounded-xl border border-outline-variant bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#00895e] resize-y"
+                placeholder="Describe material, specifications, sizing details, warranty, and package contents..."
+                className="w-full px-3 py-2 rounded-lg border border-border/70 bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
               />
             </div>
           </div>
 
           {/* 2. Target Market Selection */}
-          <div className="bg-surface-container-lowest border border-outline-variant/80 rounded-3xl p-6 sm:p-7 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
-              <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Globe2 className="w-4 h-4 text-[#00895e]" />
-                <span>Market Region &amp; Currency</span>
+          <div className="bg-card border border-border/60 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Globe2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Market Region & Currency</span>
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {[
-                { id: 'Both', label: '🌐 Dual Market (BD & SA)', desc: 'Available to customers in Bangladesh and Saudi Arabia' },
-                { id: 'BD', label: '🇧🇩 Bangladesh Only', desc: 'Domestic orders only with BDT (৳) pricing' },
-                { id: 'SA', label: '🇸🇦 Saudi Arabia Only', desc: 'Gulf region orders with SAR (﷼) pricing' },
+                { id: 'Both', label: 'Dual Market (BD & SA)', desc: 'Available in Bangladesh & Saudi Arabia' },
+                { id: 'BD', label: 'Bangladesh Only', desc: 'Domestic orders only with BDT (৳) pricing' },
+                { id: 'SA', label: 'Saudi Arabia Only', desc: 'Gulf region orders with SAR pricing' },
               ].map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setTargetMarket(m.id as any)}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                  className={`p-3 rounded-lg border text-left transition-colors cursor-pointer ${
                     targetMarket === m.id
-                      ? 'border-[#00895e] bg-[#00895e]/10 ring-2 ring-[#00895e]/20'
-                      : 'border-outline-variant hover:bg-surface-container'
+                      ? 'border-emerald-600 bg-emerald-500/10'
+                      : 'border-border/70 hover:bg-muted/50'
                   }`}
                 >
-                  <p className="font-extrabold text-xs text-foreground">{m.label}</p>
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{m.desc}</p>
+                  <p className="font-semibold text-xs text-foreground">{m.label}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{m.desc}</p>
                 </button>
               ))}
             </div>
           </div>
 
           {/* 3. Variants & Pricing Matrix */}
-          <div className="bg-surface-container-lowest border border-outline-variant/80 rounded-3xl p-6 sm:p-7 shadow-sm space-y-5">
-            <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
+          <div className="bg-card border border-border/60 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
               <div>
-                <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                  <Boxes className="w-4 h-4 text-[#00895e]" />
-                  <span>Variants, Pricing &amp; Stock Matrix</span>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Boxes className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Variants & Inventory Matrix</span>
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Manage distinct size/color combinations with individual stock levels</p>
               </div>
               <button
                 type="button"
                 onClick={addVariant}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-[#00895e] font-bold text-xs transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition-colors"
               >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <Plus className="w-3 h-3" />
                 <span>Add Variant</span>
               </button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+              <table className="w-full text-left border-collapse min-w-[550px]">
                 <thead>
-                  <tr className="border-b border-outline-variant/60 text-muted-foreground text-[11px] uppercase font-bold">
-                    <th className="pb-2">Size / Spec</th>
-                    <th className="pb-2">Color / Model</th>
-                    <th className="pb-2">Price (৳ / ﷼)</th>
-                    <th className="pb-2">Stock</th>
-                    <th className="pb-2">SKU Code</th>
-                    <th className="pb-2 text-right">Action</th>
+                  <tr className="border-b border-border/60 text-muted-foreground text-[10px] uppercase font-semibold">
+                    <th className="pb-1.5">Size / Spec</th>
+                    <th className="pb-1.5">Color / Model</th>
+                    <th className="pb-1.5">Price</th>
+                    <th className="pb-1.5">Stock</th>
+                    <th className="pb-1.5">SKU</th>
+                    <th className="pb-1.5 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-outline-variant/40">
-                  {variants.map((v, idx) => (
+                <tbody className="divide-y divide-border/40 text-xs">
+                  {variants.map((v) => (
                     <tr key={v.id}>
-                      <td className="py-2.5 pr-2">
+                      <td className="py-2 pr-2">
                         <input
                           type="text"
                           defaultValue={v.size}
                           placeholder="e.g. L / 128GB"
-                          className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-xs font-bold"
+                          className="w-full px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
                       </td>
-                      <td className="py-2.5 pr-2">
+                      <td className="py-2 pr-2">
                         <input
                           type="text"
                           defaultValue={v.color}
                           placeholder="e.g. Blue"
-                          className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-xs font-bold"
+                          className="w-full px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
                       </td>
-                      <td className="py-2.5 pr-2">
+                      <td className="py-2 pr-2">
                         <input
                           type="number"
                           defaultValue={v.price}
-                          className="w-24 px-3 py-2 rounded-lg border border-outline-variant bg-surface text-xs font-bold"
+                          className="w-20 px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
                       </td>
-                      <td className="py-2.5 pr-2">
+                      <td className="py-2 pr-2">
                         <input
                           type="number"
                           defaultValue={v.stock}
-                          className="w-20 px-3 py-2 rounded-lg border border-outline-variant bg-surface text-xs font-bold"
+                          className="w-16 px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
                       </td>
-                      <td className="py-2.5 pr-2">
+                      <td className="py-2 pr-2">
                         <input
                           type="text"
                           defaultValue={v.sku}
-                          className="w-28 font-mono px-3 py-2 rounded-lg border border-outline-variant bg-surface text-xs"
+                          className="w-24 font-mono px-2 py-1 rounded border border-border/70 bg-background text-xs"
                         />
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td className="py-2 text-right">
                         <button
                           type="button"
                           onClick={() => removeVariant(v.id)}
-                          disabled={variants.length === 1}
-                          className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg disabled:opacity-40"
+                          className="p-1 text-muted-foreground hover:text-rose-600 rounded transition-colors"
                           title="Remove variant"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -338,41 +335,41 @@ export default function AddProductPage() {
 
         </div>
 
-        {/* Right Column: Media, Shipping & Inspection (4 Cols) */}
-        <div className="lg:col-span-4 space-y-7">
+        {/* Right Column: Media & Shipping (4 Cols) */}
+        <div className="lg:col-span-4 space-y-4">
           
           {/* Media Upload Area */}
-          <div className="bg-surface-container-lowest border border-outline-variant/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-outline-variant/60 pb-3">
-              <h3 className="font-extrabold text-sm text-foreground">Product Gallery</h3>
-              <span className="text-[11px] text-muted-foreground font-semibold">{images.length}/5 Photos</span>
+          <div className="bg-card border border-border/60 rounded-xl p-4 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2">
+              <h3 className="font-semibold text-xs text-foreground uppercase tracking-wider">Product Photos</h3>
+              <span className="text-[11px] text-muted-foreground">{images.length}/5 photos</span>
             </div>
 
             {/* Drop Zone */}
             <div
               onClick={handleSimulateAddImage}
-              className="border-2 border-dashed border-outline-variant rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-surface hover:bg-surface-container/60 hover:border-[#00895e] transition-all cursor-pointer group"
+              className="border border-dashed border-border/80 rounded-lg p-4 flex flex-col items-center justify-center text-center bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#00895e]/10 text-[#00895e] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <UploadCloud className="w-6 h-6" />
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-1.5">
+                <UploadCloud className="w-4 h-4" />
               </div>
-              <p className="text-xs font-bold text-foreground">Click to Add Images</p>
+              <p className="text-xs font-semibold text-foreground">Click to Add Images</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG, WebP up to 5MB</p>
             </div>
 
-            {/* Thumbnail Gallery Grid */}
-            <div className="grid grid-cols-3 gap-2.5 pt-2">
+            {/* Thumbnails */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
               {images.map((img, i) => (
                 <div
                   key={i}
-                  className={`relative aspect-square rounded-xl overflow-hidden border-2 bg-surface-container group cursor-pointer ${
-                    primaryImageIndex === i ? 'border-[#00895e] ring-2 ring-[#00895e]/20' : 'border-outline-variant'
+                  className={`relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-pointer ${
+                    primaryImageIndex === i ? 'border-emerald-600 ring-1 ring-emerald-600' : 'border-border'
                   }`}
                   onClick={() => setPrimaryImageIndex(i)}
                 >
-                  <Image src={img} alt="Product image" fill className="object-cover" />
+                  <Image src={img} alt="Product" fill className="object-cover" sizes="80px" />
                   {primaryImageIndex === i && (
-                    <span className="absolute top-1 left-1 bg-[#00895e] text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
+                    <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[8px] font-bold px-1 rounded shadow">
                       Cover
                     </span>
                   )}
@@ -382,72 +379,67 @@ export default function AddProductPage() {
                       e.stopPropagation();
                       handleRemoveImage(i);
                     }}
-                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-2.5 h-2.5" />
                   </button>
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground text-center">
-              Click any photo to set it as the primary cover image.
+            <p className="text-[10px] text-muted-foreground text-center">
+              Click photo to set as cover image.
             </p>
           </div>
 
-          {/* Logistics & Delivery Options */}
-          <div className="bg-surface-container-lowest border border-outline-variant/80 rounded-3xl p-6 shadow-sm space-y-4">
-            <h3 className="font-extrabold text-sm text-foreground flex items-center gap-2 border-b border-outline-variant/60 pb-3">
-              <Truck className="w-4 h-4 text-[#00895e]" />
-              <span>Logistics &amp; Escrow</span>
+          {/* Shipping & Delivery */}
+          <div className="bg-card border border-border/60 rounded-xl p-4 shadow-xs space-y-3">
+            <h3 className="font-semibold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5 border-b border-border/60 pb-2">
+              <Truck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Logistics & Fulfillment</span>
             </h3>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium text-foreground mb-1">
                 Estimated Delivery Window
               </label>
               <select
                 value={deliveryDays}
                 onChange={(e) => setDeliveryDays(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[#00895e]"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
-                <option value="1-2 Days">1-2 Days (Express Express)</option>
+                <option value="1-2 Days">1-2 Days (Express Courier)</option>
                 <option value="2-3 Days">2-3 Days (Standard Delivery)</option>
                 <option value="3-5 Days">3-5 Days (Inter-District / Gulf)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
-                Shipping Fee (৳ / ﷼)
+              <label className="block text-xs font-medium text-foreground mb-1">
+                Shipping Fee
               </label>
               <input
                 type="number"
                 value={shippingFee}
                 onChange={(e) => setShippingFee(Number(e.target.value))}
                 disabled={freeShipping}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[#00895e] disabled:opacity-50"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
               />
             </div>
 
-            <label className="flex items-center gap-2.5 cursor-pointer pt-1">
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
               <input
                 type="checkbox"
                 checked={freeShipping}
                 onChange={(e) => setFreeShipping(e.target.checked)}
-                className="rounded accent-[#00895e] w-4 h-4"
+                className="rounded border-border text-emerald-600 focus:ring-emerald-500"
               />
-              <span className="text-xs font-bold text-foreground">Free Shipping for Buyer</span>
+              <span>Offer Free Delivery</span>
             </label>
 
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={escrowInspection}
-                onChange={(e) => setEscrowInspection(e.target.checked)}
-                className="rounded accent-[#00895e] w-4 h-4"
-              />
-              <span className="text-xs font-bold text-foreground">Enable Dreamvally Escrow Protection</span>
-            </label>
+            <div className="pt-2 border-t border-border/60 flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="text-[11px]">Dreamvally Escrow protection enabled</span>
+            </div>
           </div>
 
         </div>
