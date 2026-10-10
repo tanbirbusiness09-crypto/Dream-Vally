@@ -16,6 +16,11 @@ const items = [
 export default function MobileBottomNav() {
   const pathname = usePathname();
 
+  // Hide mobile bottom navigation on seller portal pages
+  if (pathname?.startsWith('/seller')) {
+    return null;
+  }
+
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-outline-variant/40 bg-surface-container-lowest/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
