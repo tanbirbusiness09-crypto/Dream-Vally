@@ -13,10 +13,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '12', 10);
 
-    // If DATABASE_URL is set, we query PostgreSQL via Prisma
+    // If DATABASE_URL is set and prisma is loaded, query PostgreSQL
     if (process.env.DATABASE_URL) {
       try {
         const { prisma } = await import('@/lib/prisma');
+        if (prisma && prisma.listing) {
         const whereClause: any = {
           status: 'ACTIVE',
         };
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
           totalPages: Math.ceil(totalCount / limit),
           data: listings,
         });
+        }
       } catch (dbError) {
         console.warn('Database query skipped or connecting...', dbError);
       }
@@ -125,21 +127,22 @@ export async function POST(request: NextRequest) {
 
     if (process.env.DATABASE_URL) {
       const { prisma } = await import('@/lib/prisma');
-      // In production, userId comes from session/auth token
-      const newListing = await prisma.listing.create({
-        data: {
-          title,
-          slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-          description: description || '',
-          price: Number(price),
-          categoryId,
-          condition: condition || 'USED',
-          city: location || 'Dhaka',
-          userId: body.userId || 'demo-user-id',
-        },
-      });
+      if (prisma && prisma.listing) {
+        const newListing = await prisma.listing.create({
+          data: {
+            title,
+            slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+            description: description || '',
+            price: Number(price),
+            categoryId,
+            condition: condition || 'USED',
+            city: location || 'Dhaka',
+            userId: body.userId || 'demo-user-id',
+          },
+        });
 
-      return NextResponse.json({ success: true, listing: newListing }, { status: 201 });
+        return NextResponse.json({ success: true, listing: newListing }, { status: 201 });
+      }
     }
 
     // Mock response when DB is in development setup
