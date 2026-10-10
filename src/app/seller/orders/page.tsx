@@ -1,24 +1,17 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import {
   Search,
-  Filter,
   Download,
   Printer,
   Calendar,
   Phone,
   MapPin,
-  CheckCircle2,
-  Clock,
-  Truck,
-  PackageCheck,
-  XCircle,
   Copy,
   Check,
-  ShoppingBag,
-  ChevronDown
+  ShoppingBag
 } from 'lucide-react';
 
 interface OrderItem {
@@ -26,6 +19,78 @@ interface OrderItem {
   image: string;
   quantity: number;
   price: number;
+}
+
+// Map DB status → UI label
+function mapStatus(s: string): Order['status'] {
+  switch (s) {
+    case 'PENDING_PAYMENT':
+      return 'Pending';
+    case 'PAID_ESCROW':
+      return 'Processing';
+    case 'SHIPPED':
+    case 'OUT_FOR_DELIVERY':
+      return 'Shipped';
+    case 'DELIVERED':
+    case 'COMPLETED':
+      return 'Delivered';
+    default:
+      return 'Cancelled';
+  }
+}
+
+function formatCreatedAt(iso: string): string {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  if (mins < 60) return `Today, ${time}`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24 && d.getDate() === new Date().getDate()) return `Today, ${time}`;
+  if (d.getDate() === new Date(Date.now() - 86400000).getDate()) return `Yesterday, ${time}`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+interface ApiOrder {
+  orderNumber: string;
+  totalAmount: number | string;
+  currency: string;
+  status: string;
+  shippingAddress: string;
+  contactPhone: string;
+  createdAt: string;
+  buyer: { fullName: string; email?: string | null };
+  items: {
+    quantity: number;
+    unitPrice: number | string;
+    listing: { title: string; price: number | string; city?: string | null; images?: { url: string }[] } | null;
+  }[];
+}
+
+function mapApiOrder(o: ApiOrder): Order {
+  const status = mapStatus(o.status);
+  const currency: 'BDT' | 'SAR' = o.currency === 'SAR' ? 'SAR' : 'BDT';
+  return {
+    id: o.orderNumber,
+    customerName: o.buyer?.fullName || 'Buyer',
+    phone: o.contactPhone || '—',
+    address: o.shippingAddress,
+    city: o.shippingAddress.split(',').slice(-2, -1)[0]?.trim() || '—',
+    market: currency === 'SAR' ? 'SA' : 'BD',
+    items: (o.items || []).map((it) => ({
+      name: it.listing?.title || 'Product',
+      image: it.listing?.images?.[0]?.url || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image',
+      quantity: it.quantity,
+      price: Number(it.unitPrice),
+    })),
+    totalAmount: Number(o.totalAmount),
+    currency,
+    paymentMethod: currency === 'SAR' ? 'Mada' : 'bKash',
+    paymentStatus:
+      status === 'Pending' ? 'Unpaid' : status === 'Cancelled' ? 'Refund Review' : 'Paid (Escrow)',
+    status,
+    createdAt: formatCreatedAt(o.createdAt),
+  };
 }
 
 interface Order {
@@ -46,132 +111,30 @@ interface Order {
   createdAt: string;
 }
 
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'ORD-9821',
-    customerName: 'Arafat Rahman',
-    phone: '+880 1712-345678',
-    address: 'House 14, Road 7, Banani',
-    city: 'Dhaka',
-    market: 'BD',
-    items: [
-      {
-        name: 'Exclusive Embroidered Cotton Panjabi',
-        image: '/assets/products/prod_mens_panjabi.jpg',
-        quantity: 1,
-        price: 1850,
-      },
-    ],
-    totalAmount: 1910,
-    currency: 'BDT',
-    paymentMethod: 'bKash',
-    paymentStatus: 'Paid (Escrow)',
-    status: 'Pending',
-    createdAt: 'Today, 10:23 AM',
-  },
-  {
-    id: 'ORD-9820',
-    customerName: 'Sultan Al-Otaibi',
-    phone: '+966 50 123 4567',
-    address: 'King Fahd Rd, Al Olaya',
-    city: 'Riyadh',
-    market: 'SA',
-    items: [
-      {
-        name: 'iPhone 15 Pro Max (Titanium 256GB)',
-        image: '/assets/products/prod_iphone15.jpg',
-        quantity: 1,
-        price: 4450,
-      },
-    ],
-    totalAmount: 4475,
-    currency: 'SAR',
-    paymentMethod: 'Mada',
-    paymentStatus: 'Paid (Online)',
-    status: 'Processing',
-    courier: 'SMSA Express',
-    trackingNumber: 'SMSA-9820-KSA',
-    createdAt: 'Today, 08:15 AM',
-  },
-  {
-    id: 'ORD-9819',
-    customerName: 'Tanvir Ahmed',
-    phone: '+880 1819-876543',
-    address: 'Agrabad Commercial Area',
-    city: 'Chittagong',
-    market: 'BD',
-    items: [
-      {
-        name: 'Yamaha R15 V4 Carbon Parts',
-        image: '/assets/products/prod_yamaha_r15.jpg',
-        quantity: 2,
-        price: 4250,
-      },
-    ],
-    totalAmount: 8600,
-    currency: 'BDT',
-    paymentMethod: 'Nagad',
-    paymentStatus: 'Paid (Escrow)',
-    status: 'Shipped',
-    courier: 'Steadfast Courier',
-    trackingNumber: 'STDF-883192',
-    createdAt: 'Yesterday, 04:30 PM',
-  },
-  {
-    id: 'ORD-9818',
-    customerName: 'Farhan Kabir',
-    phone: '+880 1912-345678',
-    address: 'Sector 3, Uttara',
-    city: 'Dhaka',
-    market: 'BD',
-    items: [
-      {
-        name: 'Premium Leather Executive Wallet',
-        image: '/assets/products/prod_mens_panjabi.jpg',
-        quantity: 1,
-        price: 1450,
-      },
-    ],
-    totalAmount: 1510,
-    currency: 'BDT',
-    paymentMethod: 'Visa',
-    paymentStatus: 'Paid (Online)',
-    status: 'Delivered',
-    courier: 'Pathao Courier',
-    trackingNumber: 'PTH-092144',
-    createdAt: 'Oct 22, 2026',
-  },
-  {
-    id: 'ORD-9817',
-    customerName: 'Mehedi Hasan',
-    phone: '+880 1611-998877',
-    address: 'Chawkbazar, Kotwali',
-    city: 'Chittagong',
-    market: 'BD',
-    items: [
-      {
-        name: 'Summer Casual T-Shirt Combo',
-        image: '/assets/products/prod_mens_panjabi.jpg',
-        quantity: 1,
-        price: 650,
-      },
-    ],
-    totalAmount: 710,
-    currency: 'BDT',
-    paymentMethod: 'Cash on Delivery',
-    paymentStatus: 'Unpaid (COD)',
-    status: 'Cancelled',
-    createdAt: 'Oct 20, 2026',
-  },
-];
-
 export default function OrderManagementPage() {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [activeTab, setActiveTab] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMarket, setSelectedMarket] = useState('All');
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+
+  // Load orders from database
+  React.useEffect(() => {
+    fetch('/api/seller/orders')
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json) => {
+        const data = Array.isArray(json.data) ? json.data : [];
+        setOrders(data.map(mapApiOrder));
+      })
+      .catch(() => setLoadError('Could not load orders from database'))
+      .finally(() => setLoading(false));
+  }, []);
 
   // Tab Counts
   const counts = useMemo(() => {
@@ -200,11 +163,24 @@ export default function OrderManagementPage() {
     });
   }, [orders, activeTab, selectedMarket, searchQuery]);
 
-  // Update Status
+  // Update Status → persist to database
   const handleUpdateStatus = (id: string, newStatus: Order['status']) => {
+    const enumMap: Record<Order['status'], string> = {
+      Pending: 'PENDING_PAYMENT',
+      Processing: 'PAID_ESCROW',
+      Shipped: 'SHIPPED',
+      Delivered: 'DELIVERED',
+      Cancelled: 'CANCELLED',
+    };
+    // Orders API update via listings PATCH is not applicable; update locally then try orders route
     setOrders((prev) =>
       prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
     );
+    fetch('/api/seller/orders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: id, status: enumMap[newStatus] }),
+    }).catch(() => {});
   };
 
   const copyPhone = (id: string, phone: string) => {
@@ -212,6 +188,29 @@ export default function OrderManagementPage() {
     setCopiedPhoneId(id);
     setTimeout(() => setCopiedPhoneId(null), 2000);
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-2">
+        <span className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin inline-block" />
+        <p className="text-xs text-muted-foreground font-medium">Loading orders from database...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <p className="text-xs text-muted-foreground">{loadError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-12 max-w-7xl mx-auto space-y-4 animate-in fade-in duration-200">
@@ -415,7 +414,7 @@ export default function OrderManagementPage() {
                     <td className="p-3">
                       <div className="space-y-0.5">
                         <p className="font-bold text-foreground">
-                          {order.currency === 'BDT' ? '৳' : 'SAR'} {order.totalAmount.toLocaleString()}
+                          {order.currency === 'BDT' ? 'à§³' : 'SAR'} {order.totalAmount.toLocaleString()}
                         </p>
                         <span className="inline-block text-[10px] font-medium px-1.5 py-0.2 rounded bg-muted text-foreground">
                           {order.paymentMethod}
@@ -429,7 +428,7 @@ export default function OrderManagementPage() {
                       <div className="space-y-1">
                         <select
                           value={order.status}
-                          onChange={(e) => handleUpdateStatus(order.id, e.target.value as any)}
+                          onChange={(e) => handleUpdateStatus(order.id, e.target.value as Order['status'])}
                           className={`text-xs font-semibold rounded-lg px-2 py-1 border cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors ${
                             order.status === 'Pending' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30' :
                             order.status === 'Processing' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30' :
@@ -528,7 +527,7 @@ export default function OrderManagementPage() {
                       <td className="p-2 font-medium">{item.name}</td>
                       <td className="p-2 text-center font-bold">{item.quantity}</td>
                       <td className="p-2 text-right font-bold">
-                        {selectedInvoiceOrder.currency === 'BDT' ? '৳' : 'SAR'} {item.price.toLocaleString()}
+                        {selectedInvoiceOrder.currency === 'BDT' ? 'à§³' : 'SAR'} {item.price.toLocaleString()}
                       </td>
                     </tr>
                   ))}
@@ -545,7 +544,7 @@ export default function OrderManagementPage() {
               <div className="text-right">
                 <p className="text-xs text-gray-500">Grand Total Amount</p>
                 <p className="text-lg font-bold text-emerald-900">
-                  {selectedInvoiceOrder.currency === 'BDT' ? '৳' : 'SAR'} {selectedInvoiceOrder.totalAmount.toLocaleString()}
+                  {selectedInvoiceOrder.currency === 'BDT' ? 'à§³' : 'SAR'} {selectedInvoiceOrder.totalAmount.toLocaleString()}
                 </p>
               </div>
             </div>

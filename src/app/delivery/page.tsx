@@ -1,8 +1,29 @@
-import { MOCK_DATA } from '@/lib/data';
-import Link from 'next/link';
+import prisma from '@/lib/prisma';
 
-export default function DeliveryPage() {
-  const deliveryServices = MOCK_DATA.products.filter(p => p.categoryId === 'delivery');
+export default async function DeliveryPage() {
+  const courierListings = await prisma.listing.findMany({
+    where: { status: 'ACTIVE', category: { slug: 'delivery' } },
+    orderBy: [{ viewsCount: 'desc' }, { createdAt: 'desc' }],
+    take: 12,
+    include: {
+      images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+      user: { select: { shopName: true, fullName: true, isKycVerified: true } },
+    },
+  });
+
+  const deliveryServices = courierListings.map((l) => ({
+    id: l.id,
+    title: l.title,
+    price: `৳ ${Number(l.price).toLocaleString('en-IN')}`,
+    description: l.description,
+    image: l.images[0]?.url || '/assets/categories/cat_delivery.jpg',
+    seller: {
+      name: l.user.shopName || l.user.fullName,
+      verified: l.user.isKycVerified,
+    },
+    location: l.city || 'Bangladesh',
+    specs: (l.attributes as Record<string, string>) || {},
+  }));
 
   return (
     <main className="w-full flex-grow flex flex-col items-center bg-surface-container-lowest pb-16">
@@ -70,11 +91,17 @@ export default function DeliveryPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {deliveryServices.length === 0 && (
+            <div className="col-span-full bg-surface rounded-2xl border border-outline-variant/30 p-10 text-center">
+              <p className="font-bold text-on-surface">No courier services listed yet</p>
+              <p className="text-sm text-on-surface-variant mt-1">Check back soon — new partners are added regularly.</p>
+            </div>
+          )}
           {deliveryServices.map((service) => (
             <div key={service.id} className="bg-surface rounded-2xl shadow-sm border border-outline-variant/30 p-6 flex flex-col group hover:border-tertiary hover:shadow-md transition-all">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-container-high border border-outline-variant/30 flex-shrink-0 relative">
-                  <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
+                  <img src={service.image} alt={service.title} className="w-full h-full object-cover" /* eslint-disable-line @next/next/no-img-element */ />
                 </div>
                 <div className="bg-tertiary/10 text-tertiary font-bold px-3 py-1 rounded-lg text-lg">
                   {service.price}

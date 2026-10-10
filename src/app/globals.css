@@ -20,6 +20,8 @@
   --color-surface-container: #f8fafc;
   --color-surface-container-high: #f1f5f9;
   --color-surface-container-lowest: #ffffff;
+  --color-card: #ffffff;
+  --color-border: #e2e8f0;
   --color-outline: #94a3b8;
   --color-outline-variant: #e2e8f0;
   --color-tertiary: #2563eb;
@@ -53,6 +55,8 @@
   --color-surface-container: #0f172a;
   --color-surface-container-high: #1e293b;
   --color-surface-container-lowest: #020617;
+  --color-card: #0f172a;
+  --color-border: #334155;
   --color-outline: #64748b;
   --color-outline-variant: #334155;
   --color-tertiary: #93c5fd;
@@ -84,6 +88,8 @@
   --color-surface-container: var(--color-surface-container);
   --color-surface-container-high: var(--color-surface-container-high);
   --color-surface-container-lowest: var(--color-surface-container-lowest);
+  --color-card: var(--color-card);
+  --color-border: var(--color-border);
   --color-outline: var(--color-outline);
   --color-outline-variant: var(--color-outline-variant);
   --color-tertiary: var(--color-tertiary);
@@ -104,6 +110,7 @@ html {
   overflow-x: clip !important;
   max-width: 100% !important;
   width: 100% !important;
+  overscroll-behavior: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -123,6 +130,7 @@ body {
   overflow-x: clip !important;
   max-width: 100% !important;
   width: 100% !important;
+  overscroll-behavior: none;
 }
 
 .font-display { font-family: var(--font-display); }

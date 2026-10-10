@@ -4,7 +4,14 @@ import Image from "next/image";
 import HomeHero from "@/components/home/HomeHero";
 import FadeIn from "@/components/home/FadeIn";
 import CategoryProductSection from "@/components/home/CategoryProductSection";
-import { CATEGORY_SHOWCASES } from "@/lib/categoryProductsData";
+import {
+  getHomeCategories,
+  getPopularProducts,
+  getHomeShowcases,
+  getFlashDeals,
+  type HomeCategory,
+  type HomeProduct,
+} from "@/lib/home-data";
 import {
   ChevronRight,
   ChevronLeft,
@@ -20,132 +27,6 @@ import {
   Check,
 } from "lucide-react";
 
-// Top Categories with tailored studio photos, Bengali subtitles & ad counts matching reference
-const TOP_CATEGORIES = [
-  {
-    id: "mobiles",
-    name: "Mobiles",
-    bnName: "মোবাইল ও গ্যাজেট",
-    image: "/assets/categories/cat_mobiles.jpg",
-    count: "12,450+ Ads",
-    path: "/categories?id=mobiles",
-  },
-  {
-    id: "electronics",
-    name: "Electronics",
-    bnName: "ইলেকট্রনিক্স",
-    image: "/assets/categories/cat_electronics.jpg",
-    count: "8,320+ Ads",
-    path: "/categories?id=electronics",
-  },
-  {
-    id: "vehicles",
-    name: "Vehicles",
-    bnName: "গাড়ি ও বাইক",
-    image: "/assets/categories/cat_vehicles.jpg",
-    count: "6,890+ Ads",
-    path: "/categories?id=vehicles",
-  },
-  {
-    id: "property",
-    name: "Property",
-    bnName: "জমি ও ফ্ল্যাট",
-    image: "/assets/categories/cat_property.jpg",
-    count: "4,150+ Ads",
-    path: "/property",
-  },
-  {
-    id: "jobs",
-    name: "Jobs",
-    bnName: "চাকরি ও ক্যারিয়ার",
-    image: "/assets/categories/cat_jobs.jpg",
-    count: "3,200+ Ads",
-    path: "/jobs",
-  },
-  {
-    id: "pets",
-    name: "Pets",
-    bnName: "পোষা প্রাণী",
-    image: "/assets/categories/cat_pets.jpg",
-    count: "1,980+ Ads",
-    path: "/categories?id=pets",
-  },
-  {
-    id: "services",
-    name: "Local Services",
-    bnName: "সার্ভিস ও সেবা",
-    image: "/assets/categories/cat_services.jpg",
-    count: "2,740+ Ads",
-    path: "/services",
-  },
-  {
-    id: "delivery",
-    name: "Delivery",
-    bnName: "ডেলিভারি",
-    image: "/assets/categories/cat_delivery.jpg",
-    count: "1,450+ Ads",
-    path: "/delivery",
-  },
-];
-
-// Popular Products matching the 6 items in reference design
-const POPULAR_PRODUCTS = [
-  {
-    id: "m1",
-    title: "iPhone 15 Pro",
-    price: "৳ 1,25,000",
-    rating: "4.8",
-    reviews: "1.2k",
-    badge: { label: "★ Hot", className: "bg-[#00895e] text-white" },
-    image: "/assets/products/prod_iphone15.jpg",
-  },
-  {
-    id: "e1",
-    title: "MacBook Air M2",
-    price: "৳ 1,05,000",
-    rating: "4.9",
-    reviews: "856",
-    badge: { label: "★ Best Seller", className: "bg-[#005a3c] text-white" },
-    image: "/assets/products/prod_macbook_m2.jpg",
-  },
-  {
-    id: "v1",
-    title: "Yamaha R15 V4",
-    price: "৳ 4,25,000",
-    rating: "4.7",
-    reviews: "642",
-    badge: { label: "Featured", className: "bg-rose-500 text-white" },
-    image: "/assets/products/prod_yamaha_r15.jpg",
-  },
-  {
-    id: "pr1",
-    title: "3 BHK Flat (For Sale)",
-    price: "৳ 85,00,000",
-    rating: "4.6",
-    reviews: "489",
-    badge: { label: "★ Top Rated", className: "bg-emerald-700 text-white" },
-    image: "/assets/products/prod_3bhk_flat.jpg",
-  },
-  {
-    id: "v2",
-    title: "Toyota Corolla X",
-    price: "৳ 28,00,000",
-    rating: "4.5",
-    reviews: "923",
-    badge: null,
-    image: "/assets/products/prod_toyota_corolla.jpg",
-  },
-  {
-    id: "c1",
-    title: "Men's Panjabi",
-    price: "৳ 1,200",
-    rating: "4.8",
-    reviews: "412",
-    badge: { label: "New", className: "bg-teal-600 text-white" },
-    image: "/assets/products/prod_mens_panjabi.jpg",
-  },
-];
-
 function SectionSkeleton({ className = "h-40" }: { className?: string }) {
   return (
     <div
@@ -155,7 +36,8 @@ function SectionSkeleton({ className = "h-40" }: { className?: string }) {
 }
 
 // 1. Top Categories Section (Pastel Circular Icon Badges matching reference)
-function TopCategories() {
+function TopCategories({ categories }: { categories: HomeCategory[] }) {
+  if (categories.length === 0) return null;
   return (
     <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-1 sm:pt-2 pb-8 sm:pb-10">
       <FadeIn>
@@ -191,7 +73,7 @@ function TopCategories() {
 
           {/* Slow-Motion Marquee Track */}
           <div className="animate-slow-marquee group-hover/slider:[animation-play-state:paused] flex gap-3.5 sm:gap-5 py-2">
-            {[...TOP_CATEGORIES, ...TOP_CATEGORIES].map((cat, idx) => (
+            {[...categories, ...categories].map((cat, idx) => (
               <Link
                 key={`${cat.id}-${idx}`}
                 href={cat.path}
@@ -317,7 +199,8 @@ function TrustAndApp() {
 }
 
 // 3. Popular Products Section
-function PopularProducts() {
+function PopularProducts({ products }: { products: HomeProduct[] }) {
+  if (products.length === 0) return null;
   return (
     <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-10 sm:pb-12">
       <FadeIn>
@@ -354,7 +237,7 @@ function PopularProducts() {
 
         {/* Product Cards Grid (6 Items) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {POPULAR_PRODUCTS.map((prod) => (
+          {products.map((prod) => (
             <Link
               key={prod.id}
               href={`/product/${prod.id}`}
@@ -482,18 +365,25 @@ function ShopSmartBanner() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [categories, popularProducts, showcases, deals] = await Promise.all([
+    getHomeCategories(),
+    getPopularProducts(),
+    getHomeShowcases(),
+    getFlashDeals(),
+  ]);
+
   return (
     <main className="w-full max-w-full overflow-x-hidden flex flex-col items-center bg-white dark:bg-background">
       <Suspense fallback={<SectionSkeleton className="h-[460px]" />}>
         <div className="relative z-30 w-full">
-          <HomeHero />
+          <HomeHero categories={categories} deals={deals} />
         </div>
       </Suspense>
 
       <Suspense fallback={<SectionSkeleton className="max-w-[1440px] mx-auto h-48 px-4 sm:px-6 lg:px-8" />}>
         <div className="relative z-10 w-full">
-          <TopCategories />
+          <TopCategories categories={categories} />
         </div>
       </Suspense>
 
@@ -502,11 +392,11 @@ export default function HomePage() {
       </Suspense>
 
       <Suspense fallback={<SectionSkeleton className="max-w-[1440px] mx-auto h-72 px-4 sm:px-6 lg:px-8" />}>
-        <PopularProducts />
+        <PopularProducts products={popularProducts} />
       </Suspense>
 
-      {/* Category-Wise Product Showcases with Titles (Mobiles, Electronics, Vehicles, Property) */}
-      {CATEGORY_SHOWCASES.map((showcase) => (
+      {/* Category-Wise Product Showcases with Titles */}
+      {showcases.map((showcase) => (
         <Suspense key={showcase.id} fallback={<SectionSkeleton className="max-w-[1440px] mx-auto h-72 px-4 sm:px-6 lg:px-8" />}>
           <CategoryProductSection showcase={showcase} />
         </Suspense>

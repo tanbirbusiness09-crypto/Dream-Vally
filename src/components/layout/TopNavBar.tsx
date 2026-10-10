@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useSession, signOut } from "next-auth/react";
 import {
   Bell,
   UserRound,
@@ -18,7 +19,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
-  Tag,
+  Store,
   Menu,
   X,
   Sparkles,
@@ -29,6 +30,7 @@ import { Button } from "@/components/ui/button";
 
 export default function TopNavBar() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [showCategoriesMenu, setShowCategoriesMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -55,6 +57,79 @@ export default function TopNavBar() {
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const categoriesRef = useRef<HTMLDivElement>(null);
+
+  interface NavCategory {
+    name: string;
+    bnName: string;
+    image: string;
+    href: string;
+    count: string;
+  }
+
+  const [navCategories, setNavCategories] = useState<NavCategory[]>([
+    { name: "Mobiles", bnName: "মোবাইল", image: "/assets/categories/cat_mobiles.jpg", href: "/categories?id=mobiles", count: "0 Ads" },
+    { name: "Electronics", bnName: "ইলেকট্রনিক্স", image: "/assets/categories/cat_electronics.jpg", href: "/categories?id=electronics", count: "0 Ads" },
+    { name: "Vehicles", bnName: "গাড়ি ও বাইক", image: "/assets/categories/cat_vehicles.jpg", href: "/categories?id=vehicles", count: "0 Ads" },
+    { name: "Property", bnName: "জমি ও ফ্ল্যাট", image: "/assets/categories/cat_property.jpg", href: "/property", count: "0 Ads" },
+    { name: "Pets", bnName: "পোষা প্রাণী", image: "/assets/categories/cat_pets.jpg", href: "/categories?id=pets", count: "0 Ads" },
+    { name: "Services", bnName: "সার্ভিস", image: "/assets/categories/cat_services.jpg", href: "/services", count: "0 Ads" },
+    { name: "Delivery", bnName: "ডেলিভারি", image: "/assets/categories/cat_delivery.jpg", href: "/delivery", count: "0 Ads" },
+  ]);
+
+  // Load categories from database (with active listing counts)
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/categories")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json?.data?.length) return;
+        const bn: Record<string, string> = {
+          mobiles: "মোবাইল",
+          electronics: "ইলেকট্রনিক্স",
+          vehicles: "গাড়ি ও বাইক",
+          property: "জমি ও ফ্ল্যাট",
+          fashion: "ফ্যাশন",
+          home: "হোম ও ফার্নিচার",
+          pets: "পোষা প্রাণী",
+          services: "সার্ভিস",
+          delivery: "ডেলিভারি",
+        };
+        const paths: Record<string, string> = {
+          property: "/property",
+          services: "/services",
+          delivery: "/delivery",
+        };
+        setNavCategories(
+          json.data.map(
+            (c: { slug: string; name: string; imageUrl: string | null; listingCount: number }) => ({
+              name: c.name,
+              bnName: bn[c.slug] || c.name,
+              image: c.imageUrl || "/assets/categories/cat_electronics.jpg",
+              href: paths[c.slug] || `/categories?id=${c.slug}`,
+              count: `${c.listingCount} Ads`,
+            })
+          )
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const role = (session?.user as { role?: string } | undefined)?.role || "";
+  const isAuthenticated = status === "authenticated";
+  const isSeller = role === "SELLER" || role === "VERIFIED_MERCHANT" || role === "ADMIN";
+  const memberName =
+    (session?.user as { shopName?: string | null } | undefined)?.shopName ||
+    session?.user?.name ||
+    "Dreamvally Member";
+  const initials = memberName
+    .split(" ")
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "DV";
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -89,17 +164,6 @@ export default function TopNavBar() {
     setUnreadCount(0);
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
   };
-
-  const navCategories = [
-    { name: "Mobiles", bnName: "মোবাইল", image: "/assets/categories/cat_mobiles.jpg", href: "/categories?id=mobiles", count: "12K+ Ads" },
-    { name: "Electronics", bnName: "ইলেকট্রনিক্স", image: "/assets/categories/cat_electronics.jpg", href: "/categories?id=electronics", count: "8K+ Ads" },
-    { name: "Vehicles", bnName: "গাড়ি ও বাইক", image: "/assets/categories/cat_vehicles.jpg", href: "/categories?id=vehicles", count: "6K+ Ads" },
-    { name: "Property", bnName: "জমি ও ফ্ল্যাট", image: "/assets/categories/cat_property.jpg", href: "/property", count: "4K+ Ads" },
-    { name: "Jobs", bnName: "চাকরি", image: "/assets/categories/cat_jobs.jpg", href: "/jobs", count: "3K+ Ads" },
-    { name: "Pets", bnName: "পোষা প্রাণী", image: "/assets/categories/cat_pets.jpg", href: "/categories?id=pets", count: "2K+ Ads" },
-    { name: "Services", bnName: "সার্ভিস", image: "/assets/categories/cat_services.jpg", href: "/services", count: "2.7K+ Ads" },
-    { name: "Delivery", bnName: "ডেলিভারি", image: "/assets/categories/cat_delivery.jpg", href: "/delivery", count: "1.4K+ Ads" },
-  ];
 
   return (
     <header className="sticky top-0 z-50 bg-[#064e3b] dark:bg-[#021f17] border-b border-[#D4AF37]/30 shadow-[0_4px_20px_rgba(0,0,0,0.12)] transition-colors w-full">
@@ -389,12 +453,16 @@ export default function TopNavBar() {
                 <div className="px-4 pb-3 border-b border-gray-100 dark:border-white/5">
                   <div className="flex items-center gap-2.5">
                     <div className="h-10 w-10 rounded-full bg-[#D4AF37] text-gray-950 font-black flex items-center justify-center text-sm shadow-xs">
-                      DV
+                      {initials}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold truncate">Dreamvally Member</p>
+                      <p className="text-xs font-bold truncate">{memberName}</p>
                       <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                        ✓ Verified Account
+                        {isAuthenticated
+                          ? isSeller
+                            ? `✓ ${role === "VERIFIED_MERCHANT" ? "Verified Merchant" : "Seller Account"}`
+                            : "✓ Registered Buyer"
+                          : "Sign in to your account"}
                       </p>
                     </div>
                   </div>
@@ -402,48 +470,98 @@ export default function TopNavBar() {
 
                 {/* Account Navigation Links */}
                 <div className="py-2 space-y-0.5">
-                  <Link
-                    href="/seller/products"
-                    onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
-                  >
-                    <Package className="h-4 w-4 text-gray-400" />
-                    <span>My Ads & Listings</span>
-                  </Link>
-
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
-                  >
-                    <MessageSquare className="h-4 w-4 text-gray-400" />
-                    <span>Messages & Inquiries</span>
-                  </Link>
-
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
-                  >
-                    <Settings className="h-4 w-4 text-gray-400" />
-                    <span>Account Settings</span>
-                  </Link>
+                  {!isAuthenticated ? (
+                    <>
+                      <Link
+                        href="/login"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <UserRound className="h-4 w-4 text-gray-400" />
+                        <span>Sign In</span>
+                      </Link>
+                      <Link
+                        href="/register"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <Sparkles className="h-4 w-4 text-gray-400" />
+                        <span>Create Account</span>
+                      </Link>
+                    </>
+                  ) : isSeller ? (
+                    <>
+                      <Link
+                        href="/seller/dashboard"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <Store className="h-4 w-4 text-gray-400" />
+                        <span>Seller Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/seller/products"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <Package className="h-4 w-4 text-gray-400" />
+                        <span>My Ads & Listings</span>
+                      </Link>
+                      <Link
+                        href="/seller/settings"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <Settings className="h-4 w-4 text-gray-400" />
+                        <span>Shop Settings</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/seller/register"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition-colors"
+                      >
+                        <Store className="h-4 w-4" />
+                        <span>Become a Seller</span>
+                      </Link>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4 text-gray-400" />
+                        <span>Messages & Inquiries</span>
+                      </Link>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#00895e] transition-colors"
+                      >
+                        <Settings className="h-4 w-4 text-gray-400" />
+                        <span>Account Settings</span>
+                      </Link>
+                    </>
+                  )}
                 </div>
 
                 {/* Logout / Switch User */}
-                <div className="pt-2 border-t border-gray-100 dark:border-white/5 px-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      router.push("/");
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <LogOut className="h-4 w-4 text-rose-500" />
-                    <span>Log Out</span>
-                  </button>
-                </div>
+                {isAuthenticated && (
+                  <div className="pt-2 border-t border-gray-100 dark:border-white/5 px-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        signOut({ callbackUrl: "/" });
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <LogOut className="h-4 w-4 text-rose-500" />
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -532,11 +650,11 @@ export default function TopNavBar() {
               <span>🚚 Delivery</span>
             </Link>
             <Link
-              href="/seller/products"
+              href={isSeller ? "/seller/products" : isAuthenticated ? "/seller/register" : "/login"}
               onClick={() => setMobileMenuOpen(false)}
               className="p-2.5 rounded-xl bg-white/10 text-white font-bold flex items-center gap-2"
             >
-              <span>📋 My Listings</span>
+              <span>{isSeller ? "📋 My Listings" : "🏪 Become a Seller"}</span>
             </Link>
           </div>
         </div>

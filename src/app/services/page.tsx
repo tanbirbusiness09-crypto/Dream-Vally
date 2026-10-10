@@ -1,24 +1,84 @@
-import { MOCK_DATA } from '@/lib/data';
 import Link from 'next/link';
+import prisma from '@/lib/prisma';
 
-export default function LocalServicesPage({
+interface ServiceItem {
+  id: string;
+  title: string;
+  price: string;
+  description: string;
+  location: string;
+  seller: { name: string; verified: boolean; joined: string };
+  rating: number;
+  reviews: number;
+  specs: Record<string, string>;
+}
+
+const SIDEBAR_FILTERS = [
+  { name: 'Appliance Repair', icon: 'kitchen', keywords: ['ac', 'appliance', 'repair'] },
+  { name: 'Plumbing', icon: 'plumbing', keywords: ['plumb', 'pipe', 'leak'] },
+  { name: 'Electrical', icon: 'electric_bolt', keywords: ['electric', 'wiring', 'circuit'] },
+  { name: 'Education & Tutors', icon: 'school', keywords: ['tutor', 'teacher', 'class', 'math'] },
+  { name: 'Cleaning Services', icon: 'cleaning_services', keywords: ['clean', 'sweep'] },
+  { name: 'Beauty & Salon', icon: 'face_retouching_natural', keywords: ['salon', 'beauty', 'hair'] },
+  { name: 'IT & Freelancers', icon: 'computer', keywords: ['it', 'freelance', 'web', 'software'] },
+];
+
+function matchesFilter(s: ServiceItem, keywords: string[]): boolean {
+  const hay = `${s.title} ${s.description} ${s.specs.Category || ''}`.toLowerCase();
+  return keywords.some((k) => hay.includes(k));
+}
+
+export default async function LocalServicesPage({
   searchParams,
 }: {
-  searchParams: { q?: string; location?: string; category?: string };
+  searchParams: Promise<{ q?: string; location?: string; category?: string }>;
 }) {
-  let services = MOCK_DATA.products.filter(p => p.categoryId === 'services');
-  
-  // If we don't have enough local services in mock data, let's create a richer local demo set
-  const demoServices = services.length > 0 ? services : [
-    { id: 's1', title: 'Professional Plumber', price: '৳ 500/hr', description: 'Expert in all plumbing repairs.', location: 'Dhaka', seller: { name: 'Rahim Ali', verified: true, joined: '2020' }, rating: 4.8, reviews: 124, specs: { Category: 'Plumbing' } },
-    { id: 's2', title: 'AC Servicing & Repair', price: '৳ 1000/service', description: 'Gas refill, cleaning, and maintenance.', location: 'Chattogram', seller: { name: 'CoolTech BD', verified: true, joined: '2019' }, rating: 4.9, reviews: 89, specs: { Category: 'Appliance Repair' } },
-    { id: 's3', title: 'Home Tutor (Math & Physics)', price: '৳ 8000/mo', description: 'Class 9-12. Experience: 5 years.', location: 'Dhaka', seller: { name: 'Sajid Hasan', verified: false, joined: '2022' }, rating: 4.5, reviews: 34, specs: { Category: 'Education' } },
-    { id: 's4', title: 'Electrician (House Wiring)', price: '৳ 400/hr', description: 'Short circuit fix, new wiring.', location: 'Sylhet', seller: { name: 'Kamal Electric', verified: true, joined: '2021' }, rating: 4.7, reviews: 56, specs: { Category: 'Electrical' } },
-  ];
+  const params = await searchParams;
 
-  const query = searchParams.q?.toLowerCase();
+  const listings = await prisma.listing.findMany({
+    where: { status: 'ACTIVE', category: { slug: 'services' } },
+    orderBy: [{ viewsCount: 'desc' }, { createdAt: 'desc' }],
+    take: 50,
+    include: {
+      images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+      user: { select: { shopName: true, fullName: true, isKycVerified: true, createdAt: true, sellerRating: true, totalReviews: true } },
+    },
+  });
+
+  const services: ServiceItem[] = listings.map((l) => {
+    const specs = ((l.attributes as Record<string, string>) || {}) as Record<string, string>;
+    return {
+      id: l.id,
+      title: l.title,
+      price: `৳ ${Number(l.price).toLocaleString('en-IN')}${specs.Rate || ''}`,
+      description: l.description,
+      location: l.city || 'Bangladesh',
+      seller: {
+        name: l.user.shopName || l.user.fullName,
+        verified: l.user.isKycVerified,
+        joined: String(l.user.createdAt.getFullYear()),
+      },
+      rating: l.user.sellerRating,
+      reviews: l.user.totalReviews,
+      specs,
+    };
+  });
+
+  const activeFilter = SIDEBAR_FILTERS.find((f) => f.name === params.category);
+  let demoServices = activeFilter ? services.filter((s) => matchesFilter(s, activeFilter.keywords)) : services;
+
+  const query = params.q?.toLowerCase();
   if (query) {
-    // In a real app we would filter the demoServices here
+    demoServices = demoServices.filter(
+      (s) =>
+        s.title.toLowerCase().includes(query) ||
+        s.description.toLowerCase().includes(query) ||
+        s.location.toLowerCase().includes(query)
+    );
+  }
+  const locationFilter = params.location?.toLowerCase();
+  if (locationFilter) {
+    demoServices = demoServices.filter((s) => s.location.toLowerCase().includes(locationFilter));
   }
 
   return (
@@ -74,23 +134,27 @@ export default function LocalServicesPage({
           <div className="bg-surface rounded-2xl shadow-sm border border-outline-variant/30 p-5 sticky top-[96px]">
             <h3 className="font-bold text-lg text-on-surface mb-4">Service Categories</h3>
             <div className="flex flex-col gap-1">
-              {[
-                { name: 'Appliance Repair', icon: 'kitchen', count: 42 },
-                { name: 'Plumbing', icon: 'plumbing', count: 28 },
-                { name: 'Electrical', icon: 'electric_bolt', count: 35 },
-                { name: 'Education & Tutors', icon: 'school', count: 89 },
-                { name: 'Cleaning Services', icon: 'cleaning_services', count: 15 },
-                { name: 'Beauty & Salon', icon: 'face_retouching_natural', count: 22 },
-                { name: 'IT & Freelancers', icon: 'computer', count: 110 }
-              ].map((cat) => (
-                <button key={cat.name} className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-[#064e3b] transition-colors group text-left">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-[20px]">{cat.icon}</span>
-                    <span className="font-medium text-sm group-hover:font-bold">{cat.name}</span>
-                  </div>
-                  <span className="text-xs bg-surface-container-high px-2 py-0.5 rounded-full">{cat.count}</span>
-                </button>
-              ))}
+              {SIDEBAR_FILTERS.map((cat) => {
+                const count = services.filter((s) => matchesFilter(s, cat.keywords)).length;
+                const isActive = activeFilter?.name === cat.name;
+                return (
+                  <Link
+                    key={cat.name}
+                    href={isActive ? '/services' : `/services?category=${encodeURIComponent(cat.name)}`}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors group text-left ${
+                      isActive
+                        ? 'bg-surface-container text-[#064e3b] font-bold'
+                        : 'hover:bg-surface-container text-on-surface-variant hover:text-[#064e3b]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[20px]">{cat.icon}</span>
+                      <span className="font-medium text-sm group-hover:font-bold">{cat.name}</span>
+                    </div>
+                    <span className="text-xs bg-surface-container-high px-2 py-0.5 rounded-full">{count}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </aside>
@@ -110,6 +174,12 @@ export default function LocalServicesPage({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {demoServices.length === 0 && (
+              <div className="col-span-full bg-surface rounded-2xl border border-outline-variant/30 p-10 text-center">
+                <p className="font-bold text-on-surface">No services found</p>
+                <p className="text-sm text-on-surface-variant mt-1">Try a different search or category.</p>
+              </div>
+            )}
             {demoServices.map((service) => (
               <div key={service.id} className="bg-surface rounded-2xl shadow-sm border border-outline-variant/30 hover:border-[#064e3b]/50 hover:shadow-md transition-all overflow-hidden flex flex-col group">
                 
@@ -130,9 +200,9 @@ export default function LocalServicesPage({
                   <div className="flex flex-col items-end">
                     <div className="flex items-center gap-1 text-[#D4AF37]">
                       <span className="material-symbols-outlined text-[16px] icon-fill">star</span>
-                      <span className="font-bold text-on-surface">{(service as any).rating || '4.5'}</span>
+                      <span className="font-bold text-on-surface">{service.rating.toFixed(1)}</span>
                     </div>
-                    <span className="text-xs text-on-surface-variant underline cursor-pointer">{(service as any).reviews || '20'} reviews</span>
+                    <span className="text-xs text-on-surface-variant underline cursor-pointer">{service.reviews} reviews</span>
                   </div>
                 </div>
 
@@ -152,7 +222,7 @@ export default function LocalServicesPage({
                       <span className="material-symbols-outlined text-[16px]">location_on</span> {service.location}
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[16px]">category</span> {(service.specs as any)?.Category || 'General'}
+                      <span className="material-symbols-outlined text-[16px]">category</span> {service.specs.Category || 'General'}
                     </span>
                   </div>
 

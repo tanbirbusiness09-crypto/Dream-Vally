@@ -12,20 +12,50 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'newest';
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '12', 10);
+    const mine = searchParams.get('mine') === 'true';
 
     // If DATABASE_URL is set and prisma is loaded, query PostgreSQL
     if (process.env.DATABASE_URL) {
       try {
         const { prisma } = await import('@/lib/prisma');
         if (prisma && prisma.listing) {
-        const whereClause: any = {
+        // mine=true → session seller's own listings (all statuses incl. DRAFT, excl. ARCHIVED soft-deleted)
+        if (mine) {
+          const { getServerSession } = await import('next-auth');
+          const { authOptions } = await import('@/lib/auth');
+          const session = await getServerSession(authOptions);
+          const userId = (session?.user as { id?: string } | undefined)?.id;
+          if (!userId) {
+            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+          }
+          const ownWhere = { userId, status: { not: 'ARCHIVED' as const } };
+          const [ownTotal, ownListings] = await Promise.all([
+            prisma.listing.count({ where: ownWhere }),
+            prisma.listing.findMany({
+              where: ownWhere,
+              include: {
+                images: { orderBy: { sortOrder: 'asc' } },
+                category: true,
+              },
+              orderBy: { createdAt: 'desc' },
+            }),
+          ]);
+          return NextResponse.json({
+            source: 'database',
+            mine: true,
+            total: ownTotal,
+            data: ownListings,
+          });
+        }
+
+        const whereClause: import('@prisma/client').Prisma.ListingWhereInput = {
           status: 'ACTIVE',
         };
 
         if (category && category !== 'all') {
           whereClause.category = { slug: category };
         }
-        if (market && market !== 'All') {
+        if (market === 'BD' || market === 'SA') {
           whereClause.targetMarket = { in: [market, 'BOTH'] };
         }
         if (city && city !== 'all') {
@@ -104,9 +134,10 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
       data: paginated,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch listings', message: error?.message },
+      { error: 'Failed to fetch listings', message },
       { status: 500 }
     );
   }
@@ -116,47 +147,140 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, description, price, categoryId, location, phone, condition } = body;
+    const { title, description, price, categoryId, categorySlug, location, condition } = body;
 
-    if (!title || !price || !categoryId) {
+    if (!title || !price) {
       return NextResponse.json(
-        { error: 'Missing required fields: title, price, and categoryId are required' },
+        { error: 'Missing required fields: title and price are required' },
         { status: 400 }
       );
     }
-
-    if (process.env.DATABASE_URL) {
-      const { prisma } = await import('@/lib/prisma');
-      if (prisma && prisma.listing) {
-        const newListing = await prisma.listing.create({
-          data: {
-            title,
-            slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-            description: description || '',
-            price: Number(price),
-            categoryId,
-            condition: condition || 'USED',
-            city: location || 'Dhaka',
-            userId: body.userId || 'demo-user-id',
-          },
-        });
-
-        return NextResponse.json({ success: true, listing: newListing }, { status: 201 });
-      }
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { success: true, message: 'Mock mode — DATABASE_URL not set', data: { id: `PRD-${Date.now()}` } },
+        { status: 201 }
+      );
     }
 
-    // Mock response when DB is in development setup
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Listing received (Mock Mode - Connect DATABASE_URL to persist)',
-        data: { id: `PRD-${Date.now()}`, title, price, categoryId, location, phone },
+    const { prisma } = await import('@/lib/prisma');
+    if (!prisma?.listing) {
+      return NextResponse.json({ error: 'Database not available' }, { status: 503 });
+    }
+
+    // Resolve user: session → body.userId → demo seller
+    let userId = body.userId as string | undefined;
+    try {
+      const { getServerSession } = await import('next-auth');
+      const { authOptions } = await import('@/lib/auth');
+      const session = await getServerSession(authOptions);
+      const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
+      if (sessionUserId) userId = sessionUserId;
+    } catch {
+      // no session — continue with fallback
+    }
+
+    if (!userId) {
+      const demo = await prisma.user.findFirst({
+        where: { email: 'demo@dreamvally.com' },
+        select: { id: true },
+      });
+      userId = demo?.id;
+    }
+    if (!userId) {
+      return NextResponse.json({ error: 'No user available to own this listing' }, { status: 400 });
+    }
+
+    // Resolve category: by id or slug; fallback to first category
+    let resolvedCategoryId = categoryId as string | undefined;
+    if (!resolvedCategoryId) {
+      const cat = await prisma.category.findFirst({
+        where: categorySlug ? { slug: categorySlug } : {},
+        select: { id: true },
+      });
+      resolvedCategoryId = cat?.id;
+    }
+    if (!resolvedCategoryId) {
+      const firstCat = await prisma.category.findFirst({ select: { id: true } });
+      resolvedCategoryId = firstCat?.id;
+    }
+    if (!resolvedCategoryId) {
+      return NextResponse.json({ error: 'No categories in database — run npm run db:seed' }, { status: 400 });
+    }
+
+    // Default image: category image (every listing must show a real image on home/cards)
+    const catRow = await prisma.category.findUnique({
+      where: { id: resolvedCategoryId },
+      select: { imageUrl: true },
+    });
+
+    // Map simple condition values → enum
+    const conditionMap: Record<string, string> = {
+      new: 'BRAND_NEW',
+      used: 'USED',
+      BRAND_NEW: 'BRAND_NEW',
+      LIKE_NEW: 'LIKE_NEW',
+      USED: 'USED',
+      REFURBISHED: 'REFURBISHED',
+    };
+
+    // Optional fields from add-product form
+    const images: string[] = Array.isArray(body.images)
+      ? body.images.filter((u: unknown) => typeof u === 'string' && u).slice(0, 5)
+      : [];
+    const stock = Number.isFinite(Number(body.stock)) ? Math.max(0, Number(body.stock)) : 1;
+    const sku = typeof body.sku === 'string' && body.sku.trim() ? body.sku.trim() : undefined;
+    const marketMap: Record<string, string> = { Both: 'BOTH', BD: 'BD', SA: 'SA', BOTH: 'BOTH' };
+    const targetMarket = (marketMap[body.targetMarket] || 'BD') as never;
+    const deliveryFee =
+      Number.isFinite(Number(body.deliveryFee)) && Number(body.deliveryFee) > 0
+        ? Number(body.deliveryFee)
+        : null;
+    const status = body.status === 'DRAFT' ? 'DRAFT' : 'ACTIVE';
+
+    const slugBase = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const newListing = await prisma.listing.create({
+      data: {
+        title,
+        slug: `${slugBase}-${Date.now()}`,
+        description: description || '',
+        price: Number(price),
+        categoryId: resolvedCategoryId,
+        condition: (conditionMap[condition] || 'USED') as never,
+        city: location || 'Dhaka',
+        country: 'Bangladesh',
+        status,
+        userId,
+        stock,
+        ...(sku ? { sku } : {}),
+        targetMarket,
+        deliveryAvailable: deliveryFee !== null || !!body.freeShipping,
+        deliveryFee: body.freeShipping ? 0 : deliveryFee,
+        ...(body.attributes && typeof body.attributes === 'object'
+          ? { attributes: body.attributes }
+          : {}),
+        images: images.length
+          ? {
+              create: images.map((url, idx) => ({
+                url,
+                isPrimary: idx === 0,
+                sortOrder: idx,
+                altText: title,
+              })),
+            }
+          : catRow?.imageUrl
+          ? {
+              create: [{ url: catRow.imageUrl, isPrimary: true, sortOrder: 0, altText: title }],
+            }
+          : undefined,
       },
-      { status: 201 }
-    );
-  } catch (error: any) {
+      include: { images: true },
+    });
+
+    return NextResponse.json({ success: true, listing: newListing }, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create listing', message: error?.message },
+      { error: 'Failed to create listing', message },
       { status: 500 }
     );
   }

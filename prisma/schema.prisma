@@ -48,6 +48,7 @@ enum ListingStatus {
   EXPIRED
   DRAFT
   REJECTED
+  ARCHIVED
 }
 
 enum OfferStatus {
@@ -85,6 +86,12 @@ model User {
   isPhoneVerified Boolean       @default(false)
   isKycVerified   Boolean       @default(false)
   nationalId      String?
+  
+  // Verification Documents (uploaded file paths under /uploads/)
+  nidFrontUrl     String?
+  nidBackUrl      String?
+  tradeLicenseUrl String?
+  kycSubmittedAt  DateTime?
   
   // Merchant / Seller Specific Fields
   shopName        String?

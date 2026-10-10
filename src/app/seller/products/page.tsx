@@ -1,39 +1,25 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   Package,
   Plus,
   Search,
-  Filter,
-  ArrowUpDown,
   QrCode,
   Printer,
   Edit3,
   Trash2,
-  Eye,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   Download,
   LayoutGrid,
   List,
-  Sparkles,
-  Check,
   X,
-  ExternalLink,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Boxes,
   DollarSign,
-  Tag,
-  Globe2,
-  Share2,
-  ShoppingBag,
-  MoreVertical
+  Loader2
 } from 'lucide-react';
 
 interface Product {
@@ -52,101 +38,10 @@ interface Product {
   lastUpdated: string;
 }
 
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: 'PRD-101',
-    name: 'Exclusive Embroidered Cotton Panjabi',
-    category: 'Clothing & Fashion',
-    price: 1850,
-    currency: 'BDT',
-    stock: 24,
-    sku: 'DV-PANJ-01',
-    status: 'Active',
-    image: '/assets/products/prod_mens_panjabi.jpg',
-    market: 'Both',
-    sales: 142,
-    views: 1250,
-    lastUpdated: '2 hours ago',
-  },
-  {
-    id: 'PRD-102',
-    name: 'Apple iPhone 15 Pro Max (Titanium 256GB)',
-    category: 'Electronics & Mobiles',
-    price: 4450,
-    currency: 'SAR',
-    stock: 2,
-    sku: 'DV-IPH-15P',
-    status: 'Low Stock',
-    image: '/assets/products/prod_iphone15.jpg',
-    market: 'SA',
-    sales: 18,
-    views: 3410,
-    lastUpdated: 'Yesterday',
-  },
-  {
-    id: 'PRD-103',
-    name: 'MacBook Air M2 13-inch (Midnight 512GB)',
-    category: 'Laptops & Computers',
-    price: 128500,
-    currency: 'BDT',
-    stock: 7,
-    sku: 'DV-MAC-M2',
-    status: 'Active',
-    image: '/assets/products/prod_macbook_m2.jpg',
-    market: 'BD',
-    sales: 9,
-    views: 890,
-    lastUpdated: '3 days ago',
-  },
-  {
-    id: 'PRD-104',
-    name: 'Yamaha R15 V4 Racing Blue Edition',
-    category: 'Vehicles & Motors',
-    price: 595000,
-    currency: 'BDT',
-    stock: 1,
-    sku: 'DV-YMH-R15',
-    status: 'Low Stock',
-    image: '/assets/products/prod_yamaha_r15.jpg',
-    market: 'BD',
-    sales: 3,
-    views: 5120,
-    lastUpdated: 'Just now',
-  },
-  {
-    id: 'PRD-105',
-    name: 'Modern 3BHK Luxury Apartment Gulshan',
-    category: 'Properties & Real Estate',
-    price: 24500000,
-    currency: 'BDT',
-    stock: 0,
-    sku: 'DV-PROP-GLS',
-    status: 'Out of Stock',
-    image: '/assets/products/prod_3bhk_flat.jpg',
-    market: 'BD',
-    sales: 1,
-    views: 8940,
-    lastUpdated: '1 week ago',
-  },
-  {
-    id: 'PRD-106',
-    name: 'Toyota Corolla Cross Hybrid 2024',
-    category: 'Vehicles & Motors',
-    price: 94000,
-    currency: 'SAR',
-    stock: 0,
-    sku: 'DV-TYT-CRS',
-    status: 'Draft',
-    image: '/assets/products/prod_toyota_corolla.jpg',
-    market: 'SA',
-    sales: 0,
-    views: 410,
-    lastUpdated: '4 days ago',
-  },
-];
-
 export default function ProductsInventoryPage() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedMarket, setSelectedMarket] = useState('All');
@@ -158,7 +53,6 @@ export default function ProductsInventoryPage() {
   // Modals
   const [barcodeModalProduct, setBarcodeModalProduct] = useState<Product | null>(null);
   const [quickEditProduct, setQuickEditProduct] = useState<Product | null>(null);
-  const [viewProductDetails, setViewProductDetails] = useState<Product | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -166,6 +60,81 @@ export default function ProductsInventoryPage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // ---- Load own listings from database ----
+  const mapListing = (l: {
+    id: string;
+    title: string;
+    price: number | string;
+    stock: number;
+    sku?: string | null;
+    status: string;
+    targetMarket: string;
+    currency?: string;
+    viewsCount: number;
+    createdAt: string;
+    images?: { url: string }[];
+    category?: { name?: string } | null;
+  }): Product => ({
+    id: l.id,
+    name: l.title,
+    category: l.category?.name || 'Uncategorized',
+    price: Number(l.price),
+    currency: l.currency === 'SAR' ? 'SAR' : 'BDT',
+    stock: l.stock,
+    sku: l.sku || '—',
+    status:
+      l.status === 'DRAFT'
+        ? 'Draft'
+        : l.status === 'ARCHIVED'
+        ? 'Draft'
+        : l.stock === 0
+        ? 'Out of Stock'
+        : l.stock <= 5
+        ? 'Low Stock'
+        : 'Active',
+    image: l.images?.[0]?.url || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image',
+    market: l.targetMarket === 'BOTH' ? 'Both' : l.targetMarket === 'SA' ? 'SA' : 'BD',
+    sales: 0,
+    views: l.viewsCount,
+    lastUpdated: timeAgo(new Date(l.createdAt)),
+  });
+
+  const timeAgo = (d: Date) => {
+    const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+    return d.toLocaleDateString();
+  };
+
+  const loadProducts = () => {
+    fetch('/api/listings?mine=true')
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json) => {
+        const data = Array.isArray(json.data) ? json.data : [];
+        setProducts(data.map(mapListing));
+      })
+      .catch(() => setLoadError('Could not load products from database'))
+      .finally(() => setLoading(false));
+  };
+
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError('');
+    loadProducts();
+  };
+
+  useEffect(() => {
+    loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // KPI Calculations
   const stats = useMemo(() => {
@@ -223,37 +192,85 @@ export default function ProductsInventoryPage() {
     );
   };
 
-  // Bulk actions
-  const handleBulkStatusChange = (newStatus: Product['status']) => {
-    setProducts(prev =>
-      prev.map(p => (selectedProductIds.includes(p.id) ? { ...p, status: newStatus } : p))
-    );
-    showToast(`Updated ${selectedProductIds.length} products to "${newStatus}"`);
+  // Bulk actions (persisted to DB)
+  const statusToApi = (s: Product['status']): string =>
+    s === 'Draft' ? 'DRAFT' : 'ACTIVE';
+
+  const patchListing = async (id: string, payload: Record<string, unknown>) => {
+    const res = await fetch(`/api/listings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || 'Update failed');
+    }
+    return res.json();
+  };
+
+  const handleBulkStatusChange = async (newStatus: Product['status']) => {
+    const ids = [...selectedProductIds];
+    try {
+      for (const id of ids) {
+        await patchListing(id, { status: statusToApi(newStatus) });
+      }
+      setProducts(prev =>
+        prev.map(p => (ids.includes(p.id) ? { ...p, status: newStatus } : p))
+      );
+      showToast(`Updated ${ids.length} products to "${newStatus}"`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Bulk update failed');
+    }
     setSelectedProductIds([]);
   };
 
-  const handleBulkDelete = () => {
-    setProducts(prev => prev.filter(p => !selectedProductIds.includes(p.id)));
-    showToast(`Deleted ${selectedProductIds.length} items from inventory`);
+  const handleBulkDelete = async () => {
+    const ids = [...selectedProductIds];
+    try {
+      for (const id of ids) {
+        await patchListing(id, { status: 'ARCHIVED' });
+      }
+      setProducts(prev => prev.filter(p => !ids.includes(p.id)));
+      showToast(`Archived ${ids.length} items from inventory`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Bulk archive failed');
+    }
     setSelectedProductIds([]);
   };
 
-  // Single Delete
-  const handleDeleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-    setDeleteConfirmId(null);
-    showToast('Product successfully removed');
+  // Single Delete → archive in DB (keeps order history intact)
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      await patchListing(id, { status: 'ARCHIVED' });
+      setProducts(prev => prev.filter(p => p.id !== id));
+      setDeleteConfirmId(null);
+      showToast('Product removed from inventory');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Delete failed');
+    }
   };
 
-  // Quick Edit Save
-  const handleSaveQuickEdit = (e: React.FormEvent) => {
+  // Quick Edit Save → PATCH to database
+  const handleSaveQuickEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickEditProduct) return;
-    setProducts(prev =>
-      prev.map(p => (p.id === quickEditProduct.id ? quickEditProduct : p))
-    );
-    setQuickEditProduct(null);
-    showToast('Product details saved!');
+    try {
+      await patchListing(quickEditProduct.id, {
+        title: quickEditProduct.name,
+        price: quickEditProduct.price,
+        stock: quickEditProduct.stock,
+        status: statusToApi(quickEditProduct.status),
+        targetMarket: quickEditProduct.market,
+      });
+      setProducts(prev =>
+        prev.map(p => (p.id === quickEditProduct.id ? quickEditProduct : p))
+      );
+      setQuickEditProduct(null);
+      showToast('Product details saved to database!');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Save failed');
+    }
   };
 
   const formatPrice = (val: number, cur: 'BDT' | 'SAR') => {
@@ -448,7 +465,7 @@ export default function ProductsInventoryPage() {
 
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'price-asc' | 'price-desc' | 'stock-asc' | 'stock-desc')}
               className="px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
               <option value="newest">Sort: Newest</option>
@@ -507,8 +524,25 @@ export default function ProductsInventoryPage() {
           </div>
         )}
 
+        {/* Loading / Error state */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-16 gap-2">
+            <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+            <p className="text-xs text-muted-foreground font-medium">Loading products from database...</p>
+          </div>
+        )}
+        {!loading && loadError && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <AlertTriangle className="w-6 h-6 text-amber-500" />
+            <p className="text-xs text-muted-foreground">{loadError}</p>
+            <button onClick={retryLoad} className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* View Mode: Table */}
-        {viewMode === 'table' ? (
+        {!loading && !loadError && (viewMode === 'table' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
@@ -670,7 +704,7 @@ export default function ProductsInventoryPage() {
               </div>
             ))}
           </div>
-        )}
+        ))}
       </div>
 
       {/* Barcode Modal */}
@@ -753,7 +787,7 @@ export default function ProductsInventoryPage() {
                 <label className="text-xs font-medium text-muted-foreground block mb-1">Status</label>
                 <select
                   value={quickEditProduct.status}
-                  onChange={(e) => setQuickEditProduct({ ...quickEditProduct, status: e.target.value as any })}
+                  onChange={(e) => setQuickEditProduct({ ...quickEditProduct, status: e.target.value as Product['status'] })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs"
                 >
                   <option value="Active">Active</option>
@@ -766,7 +800,7 @@ export default function ProductsInventoryPage() {
                 <label className="text-xs font-medium text-muted-foreground block mb-1">Target Market</label>
                 <select
                   value={quickEditProduct.market}
-                  onChange={(e) => setQuickEditProduct({ ...quickEditProduct, market: e.target.value as any })}
+                  onChange={(e) => setQuickEditProduct({ ...quickEditProduct, market: e.target.value as Product['market'] })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs"
                 >
                   <option value="Both">Both (BD & SA)</option>
@@ -804,7 +838,7 @@ export default function ProductsInventoryPage() {
             <div>
               <h3 className="font-bold text-sm text-foreground">Remove from Inventory?</h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Are you sure you want to delete this listing? Buyers won't be able to view or purchase this item.
+                Are you sure you want to delete this listing? Buyers won&apos;t be able to view or purchase this item.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">

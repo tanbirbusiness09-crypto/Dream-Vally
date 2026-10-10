@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Send, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, DollarSign, Send, CheckCircle2 } from 'lucide-react';
 import { CatalogProduct } from '@/lib/catalogData';
 
 interface MakeOfferModalProps {
@@ -21,21 +21,29 @@ export default function MakeOfferModal({
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setIsRendered(true);
-      setIsClosing(false);
-    } else if (isRendered) {
-      setIsClosing(true);
-      const timer = setTimeout(() => {
+      const t = setTimeout(() => {
+        setIsRendered(true);
+        setIsClosing(false);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    if (isRendered) {
+      const startClose = setTimeout(() => setIsClosing(true), 0);
+      const finishClose = setTimeout(() => {
         setIsRendered(false);
         setIsClosing(false);
       }, 340);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(startClose);
+        clearTimeout(finishClose);
+      };
     }
   }, [isOpen, isRendered]);
 
@@ -55,21 +63,41 @@ export default function MakeOfferModal({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRendered, isClosing]);
 
   if (!isRendered) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: product.id,
+          offerAmount: Number(offerPrice),
+          note: note || `${buyerName} (${buyerPhone})`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setSubmitError(json.error || 'Failed to send offer');
+        setIsSubmitting(false);
+        return;
+      }
       setIsSubmitting(false);
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
         handleClose();
       }, 2000);
-    }, 800);
+    } catch {
+      setSubmitError('Network error — please try again');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -147,6 +175,11 @@ export default function MakeOfferModal({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+            {submitError && (
+              <div className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                {submitError}
+              </div>
+            )}
             <div className="p-3 rounded-xl bg-gray-50 dark:bg-surface-container border border-gray-100 dark:border-outline-variant/30 flex items-center justify-between text-xs">
               <span className="text-gray-500">Asking Price:</span>
               <span className="font-extrabold text-emerald-700 dark:text-emerald-300">{product.price}</span>

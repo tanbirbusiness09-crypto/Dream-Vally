@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -23,17 +23,20 @@ import {
   CatalogProduct, 
   CatalogCategory 
 } from '@/lib/catalogData';
+import { fetchListings } from '@/lib/api';
 import ProductCard from '@/components/categories/ProductCard';
 import CategoryFilterSidebar from '@/components/categories/CategoryFilterSidebar';
 import CategoryDirectoryGrid from '@/components/categories/CategoryDirectoryGrid';
 
 function CategoriesContent() {
   const searchParams = useSearchParams();
-  const initialCategory = searchParams.get('id') || 'all';
+  // Accept ?id=, ?q= and ?category= so HomeHero & TopNavBar links all work
+  const initialCategory = searchParams.get('id') || searchParams.get('category') || 'all';
+  const initialQuery = searchParams.get('q') || '';
 
   // State Management
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedCondition, setSelectedCondition] = useState<string[]>([]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -44,6 +47,39 @@ function CategoriesContent() {
   const [viewMode, setViewMode] = useState<'listings' | 'categories'>(
     initialCategory === 'all' ? 'listings' : 'listings'
   );
+
+  // Live products from API (DB → CatalogProduct); fallback to static catalog
+  const [liveProducts, setLiveProducts] = useState<CatalogProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [dataSource, setDataSource] = useState<string>('catalog');
+
+  // Fetch listings from API whenever server-side filters change
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoadingProducts(true);
+    fetchListings({
+      category: selectedCategory,
+      search: searchQuery.trim() || undefined,
+      city: selectedLocation !== 'all' ? selectedLocation : undefined,
+      sortBy: sortBy === 'featured' ? undefined : sortBy,
+      limit: 100,
+    })
+      .then(({ products, source }) => {
+        if (!cancelled) {
+          setLiveProducts(products);
+          setDataSource(source);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLiveProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingProducts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCategory, searchQuery, selectedLocation, sortBy]);
 
   // Toggle Condition
   const toggleCondition = (cond: string) => {
@@ -65,17 +101,19 @@ function CategoriesContent() {
     setSortBy('featured');
   };
 
-  // Filter & Sort Logic
+  // Filter & Sort Logic — server filters (category/search/city/sort) happen in API;
+  // client-side we apply remaining facet filters on the result
   const filteredProducts = useMemo(() => {
-    let list = [...CATALOG_PRODUCTS];
+    // Prefer live API data; fall back to static catalog while loading or on API failure
+    let list = liveProducts.length > 0 ? [...liveProducts] : [...CATALOG_PRODUCTS];
 
-    // Category Filter
-    if (selectedCategory !== 'all') {
+    // Category Filter (client fallback when using static catalog)
+    if (selectedCategory !== 'all' && liveProducts.length === 0) {
       list = list.filter((p) => p.categoryId === selectedCategory);
     }
 
-    // Search Query
-    if (searchQuery.trim()) {
+    // Search Query (client fallback when using static catalog)
+    if (searchQuery.trim() && liveProducts.length === 0) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
         (p) =>
@@ -134,6 +172,7 @@ function CategoriesContent() {
 
     return list;
   }, [
+    liveProducts,
     selectedCategory,
     searchQuery,
     selectedLocation,

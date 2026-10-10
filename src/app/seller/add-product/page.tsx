@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   UploadCloud,
@@ -14,8 +15,8 @@ import {
   Globe2,
   Boxes,
   Tag,
-  DollarSign,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 
 interface Variant {
@@ -27,30 +28,52 @@ interface Variant {
   sku: string;
 }
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export default function AddProductPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [productTitle, setProductTitle] = useState('');
-  const [category, setCategory] = useState('Clothing & Fashion');
+  const [categorySlug, setCategorySlug] = useState('');
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [brand, setBrand] = useState('');
   const [targetMarket, setTargetMarket] = useState<'Both' | 'BD' | 'SA'>('Both');
   const [description, setDescription] = useState('');
-  
+  const [condition, setCondition] = useState('new');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
   // Media Uploads State
-  const [images, setImages] = useState<string[]>([
-    '/assets/products/prod_mens_panjabi.jpg',
-  ]);
+  const [images, setImages] = useState<string[]>([]);
   const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   // Dynamic Variants
   const [variants, setVariants] = useState<Variant[]>([
     { id: 1, size: 'L', color: 'Royal Blue', price: 1850, stock: 15, sku: 'DV-PANJ-BLU-L' },
-    { id: 2, size: 'XL', color: 'Royal Blue', price: 1850, stock: 9, sku: 'DV-PANJ-BLU-XL' },
   ]);
 
   // Shipping
   const [deliveryDays, setDeliveryDays] = useState('2-3 Days');
   const [shippingFee, setShippingFee] = useState(60);
   const [freeShipping, setFreeShipping] = useState(false);
-  const [escrowInspection, setEscrowInspection] = useState(true);
+  const [escrowInspection] = useState(true);
+
+  // Load categories from DB
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((r) => r.json())
+      .then((json) => {
+        const cats: CategoryOption[] = json.data || [];
+        setCategories(cats);
+        if (cats.length > 0) setCategorySlug(cats[0].slug);
+      })
+      .catch(() => setError('Could not load categories'));
+  }, []);
 
   const addVariant = () => {
     const nextId = Date.now();
@@ -73,23 +96,98 @@ export default function AddProductPage() {
     }
   };
 
-  const handleSimulateAddImage = () => {
-    const sampleImages = [
-      '/assets/products/prod_iphone15.jpg',
-      '/assets/products/prod_macbook_m2.jpg',
-      '/assets/products/prod_yamaha_r15.jpg',
-      '/assets/products/prod_toyota_corolla.jpg',
-    ];
-    const next = sampleImages[images.length % sampleImages.length];
-    setImages([...images, next]);
+  const updateVariant = (id: number, patch: Partial<Variant>) => {
+    setVariants(variants.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (images.length >= 5) return;
+    setError('');
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Upload failed');
+        return;
+      }
+      setImages((prev) => [...prev, json.url]);
+    } catch {
+      setError('Network error during upload');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleRemoveImage = (index: number) => {
-    if (images.length > 1) {
-      setImages(images.filter((_, i) => i !== index));
-      if (primaryImageIndex >= images.length - 1) {
-        setPrimaryImageIndex(0);
+    setImages(images.filter((_, i) => i !== index));
+    if (primaryImageIndex >= images.length - 1) {
+      setPrimaryImageIndex(0);
+    }
+  };
+
+  const buildPayload = (status: 'ACTIVE' | 'DRAFT') => {
+    const totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    return {
+      title: productTitle.trim(),
+      description: description.trim(),
+      price: Number(variants[0]?.price) || 0,
+      categorySlug,
+      condition,
+      location: 'Dhaka',
+      targetMarket,
+      stock: totalStock,
+      sku: variants[0]?.sku?.trim() || undefined,
+      images: primaryImageIndex > 0
+        ? [images[primaryImageIndex], ...images.filter((_, i) => i !== primaryImageIndex)]
+        : images,
+      deliveryFee: freeShipping ? 0 : shippingFee,
+      freeShipping,
+      status,
+      attributes: {
+        brand: brand.trim() || undefined,
+        deliveryDays,
+        escrowInspection,
+        variants: variants.map((v) => ({
+          size: v.size,
+          color: v.color,
+          price: v.price,
+          stock: v.stock,
+          sku: v.sku,
+        })),
+      },
+    };
+  };
+
+  const submit = async (status: 'ACTIVE' | 'DRAFT') => {
+    if (!productTitle.trim()) {
+      setError('Product title is required');
+      return;
+    }
+    if (!categorySlug) {
+      setError('Select a category');
+      return;
+    }
+    setError('');
+    setSaving(true);
+    try {
+      const res = await fetch('/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload(status)),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Failed to save product');
+        return;
       }
+      router.push('/seller/products');
+    } catch {
+      setError('Network error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -119,24 +217,29 @@ export default function AddProductPage() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
-            onClick={() => alert('Product saved as Draft!')}
-            className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg border border-border/70 hover:bg-muted font-medium text-xs text-foreground transition-colors"
+            disabled={saving}
+            onClick={() => submit('DRAFT')}
+            className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg border border-border/70 hover:bg-muted font-medium text-xs text-foreground transition-colors disabled:opacity-60"
           >
-            Save Draft
+            {saving ? 'Saving...' : 'Save Draft'}
           </button>
           <button
             type="button"
-            onClick={() => {
-              alert('Product successfully published to Dreamvally Marketplace!');
-              window.location.href = '/seller/products';
-            }}
-            className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            disabled={saving}
+            onClick={() => submit('ACTIVE')}
+            className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Publish Product</span>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            <span>{saving ? 'Publishing...' : 'Publish Product'}</span>
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="px-4 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
@@ -173,29 +276,46 @@ export default function AddProductPage() {
                   Category *
                 </label>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={categorySlug}
+                  onChange={(e) => setCategorySlug(e.target.value)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
-                  <option value="Clothing & Fashion">Clothing & Fashion</option>
-                  <option value="Electronics & Mobiles">Electronics & Mobiles</option>
-                  <option value="Laptops & Computers">Laptops & Computers</option>
-                  <option value="Vehicles & Motors">Vehicles & Motors</option>
-                  <option value="Properties & Real Estate">Properties & Real Estate</option>
+                  {categories.length === 0 && <option value="">Loading categories...</option>}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.slug}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
-                  Brand / Manufacturer
-                </label>
-                <input
-                  type="text"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="e.g. Dream Fashion / Apple"
-                  className="w-full px-3 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Brand / Manufacturer
+                  </label>
+                  <input
+                    type="text"
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    placeholder="e.g. Dream Fashion / Apple"
+                    className="w-full px-3 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Condition *
+                  </label>
+                  <select
+                    value={condition}
+                    onChange={(e) => setCondition(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="new">Brand New</option>
+                    <option value="used">Used</option>
+                    <option value="REFURBISHED">Refurbished</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -231,7 +351,7 @@ export default function AddProductPage() {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setTargetMarket(m.id as any)}
+                  onClick={() => setTargetMarket(m.id as 'Both' | 'BD' | 'SA')}
                   className={`p-3 rounded-lg border text-left transition-colors cursor-pointer ${
                     targetMarket === m.id
                       ? 'border-emerald-600 bg-emerald-500/10'
@@ -282,7 +402,8 @@ export default function AddProductPage() {
                       <td className="py-2 pr-2">
                         <input
                           type="text"
-                          defaultValue={v.size}
+                          value={v.size}
+                          onChange={(e) => updateVariant(v.id, { size: e.target.value })}
                           placeholder="e.g. L / 128GB"
                           className="w-full px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
@@ -290,7 +411,8 @@ export default function AddProductPage() {
                       <td className="py-2 pr-2">
                         <input
                           type="text"
-                          defaultValue={v.color}
+                          value={v.color}
+                          onChange={(e) => updateVariant(v.id, { color: e.target.value })}
                           placeholder="e.g. Blue"
                           className="w-full px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
@@ -298,21 +420,24 @@ export default function AddProductPage() {
                       <td className="py-2 pr-2">
                         <input
                           type="number"
-                          defaultValue={v.price}
+                          value={v.price}
+                          onChange={(e) => updateVariant(v.id, { price: Number(e.target.value) })}
                           className="w-20 px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
                       </td>
                       <td className="py-2 pr-2">
                         <input
                           type="number"
-                          defaultValue={v.stock}
+                          value={v.stock}
+                          onChange={(e) => updateVariant(v.id, { stock: Number(e.target.value) })}
                           className="w-16 px-2.5 py-1 rounded border border-border/70 bg-background text-xs font-medium"
                         />
                       </td>
                       <td className="py-2 pr-2">
                         <input
                           type="text"
-                          defaultValue={v.sku}
+                          value={v.sku}
+                          onChange={(e) => updateVariant(v.id, { sku: e.target.value })}
                           className="w-24 font-mono px-2 py-1 rounded border border-border/70 bg-background text-xs"
                         />
                       </td>
@@ -347,15 +472,28 @@ export default function AddProductPage() {
 
             {/* Drop Zone */}
             <div
-              onClick={handleSimulateAddImage}
+              onClick={() => !uploading && fileInputRef.current?.click()}
               className="border border-dashed border-border/80 rounded-lg p-4 flex flex-col items-center justify-center text-center bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-1.5">
-                <UploadCloud className="w-4 h-4" />
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
               </div>
-              <p className="text-xs font-semibold text-foreground">Click to Add Images</p>
+              <p className="text-xs font-semibold text-foreground">
+                {uploading ? 'Uploading...' : 'Click to Upload Photos'}
+              </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG, WebP up to 5MB</p>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFileUpload(f);
+                e.target.value = '';
+              }}
+            />
 
             {/* Thumbnails */}
             <div className="grid grid-cols-3 gap-2 pt-1">

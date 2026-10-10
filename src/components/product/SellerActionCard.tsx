@@ -12,9 +12,7 @@ import {
   DollarSign, 
   AlertCircle, 
   CheckCircle2, 
-  Store,
-  Clock,
-  Eye
+  Clock
 } from 'lucide-react';
 import { CatalogProduct } from '@/lib/catalogData';
 
@@ -25,13 +23,43 @@ interface SellerActionCardProps {
 
 export default function SellerActionCard({ product, onOpenOffer }: SellerActionCardProps) {
   const [phoneRevealed, setPhoneRevealed] = useState(false);
-  const [deliveryOrdered, setDeliveryOrdered] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const [orderSuccess, setOrderSuccess] = useState('');
 
   const seller = product.seller;
 
-  const handleOrderDelivery = () => {
-    setDeliveryOrdered(true);
-    setTimeout(() => setDeliveryOrdered(false), 3500);
+  const handleOrderDelivery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOrderError('');
+    setOrderLoading(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: product.id,
+          shippingAddress,
+          contactPhone,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setOrderError(json.error || 'Failed to place order');
+        setOrderLoading(false);
+        return;
+      }
+      setOrderLoading(false);
+      setShowOrderForm(false);
+      setOrderSuccess(`Order ${json.order.orderNumber} created — pay to start escrow!`);
+      setTimeout(() => setOrderSuccess(''), 5000);
+    } catch {
+      setOrderError('Network error — please try again');
+      setOrderLoading(false);
+    }
   };
 
   return (
@@ -113,7 +141,10 @@ export default function SellerActionCard({ product, onOpenOffer }: SellerActionC
             </button>
 
             <button
-              onClick={handleOrderDelivery}
+              onClick={() => {
+                setOrderError('');
+                setShowOrderForm((v) => !v);
+              }}
               type="button"
               className="inline-flex items-center justify-center gap-1.5 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 text-teal-900 dark:text-teal-200 border border-teal-200/80 dark:border-teal-800/60 font-bold text-xs py-2.5 px-3 rounded-xl transition-all"
             >
@@ -122,11 +153,52 @@ export default function SellerActionCard({ product, onOpenOffer }: SellerActionC
             </button>
           </div>
 
-          {/* Delivery Toast notice */}
-          {deliveryOrdered && (
+          {/* Escrow Order Form */}
+          {showOrderForm && (
+            <form onSubmit={handleOrderDelivery} className="pt-2 space-y-2">
+              {orderError && (
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-semibold">
+                  {orderError}
+                </div>
+              )}
+              <input
+                type="text"
+                required
+                placeholder="Delivery address (House, Road, Area, City)"
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-surface-container border border-gray-200 dark:border-outline-variant/40 rounded-xl px-3 py-2.5 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <input
+                type="tel"
+                required
+                placeholder="Contact phone (+880 1...)"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-surface-container border border-gray-200 dark:border-outline-variant/40 rounded-xl px-3 py-2.5 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={orderLoading}
+                className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white font-bold text-xs py-2.5 rounded-xl transition-all active:scale-98 flex items-center justify-center gap-1.5"
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>{orderLoading ? 'Placing Order...' : 'Place Escrow Order'}</span>
+              </button>
+            </form>
+          )}
+
+          {/* Order status toast */}
+          {orderSuccess && (
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2 animate-in fade-in">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span>Escrow courier request registered! Courier partner will contact you shortly.</span>
+              <span>{orderSuccess}</span>
+            </div>
+          )}
+          {!orderSuccess && orderError && !showOrderForm && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{orderError}</span>
             </div>
           )}
         </div>

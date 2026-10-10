@@ -6,8 +6,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Search,
-  ShieldCheck,
-  CheckCircle2,
   ChevronDown,
   LayoutGrid,
   ChevronLeft,
@@ -15,111 +13,20 @@ import {
   Flame,
   Clock,
   Zap,
-  TrendingUp,
   Sparkles,
   ArrowRight,
   Check,
   X,
 } from "lucide-react";
 import FadeIn from "./FadeIn";
+import type { HomeCategory, FlashDeal } from "@/lib/home-data";
 
 const POPULAR_SEARCHES = ["iPhone", "Laptop", "Motorcycle", "Apartment", "Jobs"];
 
-const CATEGORY_ITEMS = [
-  {
-    id: "mobiles",
-    name: "Mobiles",
-    bnName: "মোবাইল ও গ্যাজেট",
-    image: "/assets/categories/cat_mobiles.jpg",
-    count: "12,450+ Ads",
-  },
-  {
-    id: "electronics",
-    name: "Electronics",
-    bnName: "ইলেকট্রনিক্স",
-    image: "/assets/categories/cat_electronics.jpg",
-    count: "8,320+ Ads",
-  },
-  {
-    id: "vehicles",
-    name: "Vehicles",
-    bnName: "গাড়ি ও বাইক",
-    image: "/assets/categories/cat_vehicles.jpg",
-    count: "6,890+ Ads",
-  },
-  {
-    id: "property",
-    name: "Property",
-    bnName: "জমি ও ফ্ল্যাট",
-    image: "/assets/categories/cat_property.jpg",
-    count: "4,150+ Ads",
-  },
-  {
-    id: "jobs",
-    name: "Jobs",
-    bnName: "চাকরি ও ক্যারিয়ার",
-    image: "/assets/categories/cat_jobs.jpg",
-    count: "3,200+ Ads",
-  },
-  {
-    id: "pets",
-    name: "Pets",
-    bnName: "পোষা প্রাণী",
-    image: "/assets/categories/cat_pets.jpg",
-    count: "1,980+ Ads",
-  },
-  {
-    id: "services",
-    name: "Services",
-    bnName: "সার্ভিস ও সেবা",
-    image: "/assets/categories/cat_services.jpg",
-    count: "2,740+ Ads",
-  },
-  {
-    id: "delivery",
-    name: "Delivery",
-    bnName: "ডেলিভারি",
-    image: "/assets/categories/cat_delivery.jpg",
-    count: "1,450+ Ads",
-  },
-];
-
-// Option 3: Flash Deals Live Showcase Items with Real Product Assets
-const FLASH_DEALS = [
-  {
-    id: "d1",
-    title: "iPhone 15 Pro (256GB)",
-    dealPrice: "৳ 1,18,000",
-    regularPrice: "৳ 1,45,000",
-    discount: "-19%",
-    image: "/assets/products/prod_iphone15.jpg",
-    location: "Gulshan, Dhaka",
-    claimed: 84,
-    badge: "Hot Deal",
-  },
-  {
-    id: "d2",
-    title: "Apple MacBook Air M2",
-    dealPrice: "৳ 89,999",
-    regularPrice: "৳ 1,10,000",
-    discount: "-18%",
-    image: "/assets/products/prod_macbook_m2.jpg",
-    location: "Dhanmondi, Dhaka",
-    claimed: 92,
-    badge: "Super Saver",
-  },
-  {
-    id: "d3",
-    title: "Yamaha R15 V4 Racing Blue",
-    dealPrice: "৳ 4,65,000",
-    regularPrice: "৳ 5,20,000",
-    discount: "-11%",
-    image: "/assets/products/prod_yamaha_r15.jpg",
-    location: "Agrabad, Chattogram",
-    claimed: 76,
-    badge: "Mega Drop",
-  },
-];
+interface HomeHeroProps {
+  categories: HomeCategory[];
+  deals: FlashDeal[];
+}
 
 // Interactive 3D Promotional Slider Items with Discount Themes
 const HERO_SLIDES = [
@@ -152,7 +59,7 @@ const HERO_SLIDES = [
   },
 ];
 
-export default function HomeHero() {
+export default function HomeHero({ categories, deals }: HomeHeroProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"buy" | "sell" | "connect">("buy");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
@@ -198,12 +105,12 @@ export default function HomeHero() {
 
   // Rotate through flash deals every 3.8s
   useEffect(() => {
-    if (isDealPaused) return;
+    if (isDealPaused || deals.length === 0) return;
     const dealTimer = setInterval(() => {
-      setCurrentDeal((prev) => (prev + 1) % FLASH_DEALS.length);
+      setCurrentDeal((prev) => (prev + 1) % deals.length);
     }, 3800);
     return () => clearInterval(dealTimer);
-  }, [isDealPaused]);
+  }, [isDealPaused, deals.length]);
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
@@ -298,8 +205,13 @@ export default function HomeHero() {
                 </div>
 
                 {/* Auto-Rotating Active Flash Deal Showcase */}
-                {(() => {
-                  const deal = FLASH_DEALS[currentDeal];
+                {deals.length === 0 && (
+                  <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/30 p-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                    No live deals right now — check back soon!
+                  </div>
+                )}
+                {deals.length > 0 && (() => {
+                  const deal = deals[currentDeal % deals.length];
                   return (
                     <div
                       key={deal.id}
@@ -318,9 +230,11 @@ export default function HomeHero() {
                             unoptimized
                             className="object-cover transition-transform duration-500 group-hover/deal:scale-105"
                           />
-                          <span className="absolute top-1.5 left-1.5 bg-[#00895e] text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-sm border border-emerald-300/40">
-                            {deal.discount}
-                          </span>
+                          {deal.discount && (
+                            <span className="absolute top-1.5 left-1.5 bg-[#00895e] text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-sm border border-emerald-300/40">
+                              {deal.discount}
+                            </span>
+                          )}
                         </div>
 
                         {/* Product Details: Title, Location, Price & Claim Progress */}
@@ -366,13 +280,13 @@ export default function HomeHero() {
 
                       {/* Carousel Indicator Dots */}
                       <div className="flex items-center justify-center gap-1.5 mt-2.5 pt-1.5 border-t border-gray-100 dark:border-white/5">
-                        {FLASH_DEALS.map((d, idx) => (
+                        {deals.map((d, idx) => (
                           <button
                             key={d.id}
                             type="button"
                             onClick={() => setCurrentDeal(idx)}
                             className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                              idx === currentDeal
+                              idx === currentDeal % deals.length
                                 ? "w-5 bg-[#00895e]"
                                 : "w-1.5 bg-emerald-200/80 dark:bg-gray-700 hover:bg-emerald-400"
                             }`}
@@ -523,7 +437,7 @@ export default function HomeHero() {
 
                         {/* 8 Category Cards with Real Studio Photos */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 py-3.5">
-                          {CATEGORY_ITEMS.map((cat) => {
+                          {categories.map((cat) => {
                             const isSelected = selectedCategory === cat.name;
                             return (
                               <button

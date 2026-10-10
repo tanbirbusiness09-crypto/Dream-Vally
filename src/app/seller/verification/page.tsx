@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Loader2, AlertCircle } from 'lucide-react';
 import {
   ShieldCheck,
   CheckCircle2,
   FileText,
-  UploadCloud,
   UserCheck,
   CreditCard,
   Lock,
@@ -15,27 +15,110 @@ import {
   BadgeCheck,
   Check
 } from 'lucide-react';
+import ImageUpload from '@/components/ui/ImageUpload';
+
+interface ProfileData {
+  fullName: string;
+  shopName: string | null;
+  nationalId: string | null;
+  nidFrontUrl: string | null;
+  nidBackUrl: string | null;
+  tradeLicenseUrl: string | null;
+  isKycVerified: boolean;
+  kycSubmittedAt: string | null;
+}
 
 export default function VerificationPage() {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [sellerType, setSellerType] = useState<'individual' | 'business'>('business');
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
   // Form Fields
-  const [fullName, setFullName] = useState('John Doe');
-  const [shopName, setShopName] = useState('Dream Fashion Store');
-  const [nidNumber, setNidNumber] = useState('1994829104821');
-  const [tradeLicenseNo, setTradeLicenseNo] = useState('TRD-DHK-2024-9912');
-  
-  // Payout
-  const [payoutMethod, setPayoutMethod] = useState('bKash Merchant');
-  const [accountNumber, setAccountNumber] = useState('01711-234567');
-  const [accountHolder, setAccountHolder] = useState('Dream Fashion');
+  const [fullName, setFullName] = useState('');
+  const [shopName, setShopName] = useState('');
+  const [nidNumber, setNidNumber] = useState('');
+  const [nidFront, setNidFront] = useState<string | null>(null);
+  const [nidBack, setNidBack] = useState<string | null>(null);
+  const [tradeLicenseUrl, setTradeLicenseUrl] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Payout (local only — not persisted yet)
+  const [payoutMethod, setPayoutMethod] = useState('bKash Merchant');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
+
+  // Load existing profile
+  useEffect(() => {
+    fetch('/api/user/profile')
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then(({ user }: { user: ProfileData }) => {
+        setFullName(user.fullName || '');
+        setShopName(user.shopName || '');
+        setNidNumber(user.nationalId || '');
+        setNidFront(user.nidFrontUrl);
+        setNidBack(user.nidBackUrl);
+        setTradeLicenseUrl(user.tradeLicenseUrl);
+        setAccountHolder(user.shopName || '');
+        setHasSubmitted(!!user.kycSubmittedAt);
+        setIsVerified(user.isKycVerified);
+        if (user.isKycVerified) setHasSubmitted(true);
+      })
+      .catch(() => setError('Could not load profile'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    if (sellerType === 'business' && !tradeLicenseUrl) {
+      setError('Trade license upload is required for registered businesses.');
+      return;
+    }
+    if (!nidFront) {
+      setError('NID front side upload is required.');
+      return;
+    }
+    setError('');
+    setSubmitting(true);
+
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          shopName,
+          nationalId: nidNumber,
+          nidFrontUrl: nidFront,
+          nidBackUrl: nidBack,
+          tradeLicenseUrl: sellerType === 'business' ? tradeLicenseUrl : null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Submission failed');
+        return;
+      }
+      setHasSubmitted(true);
+    } catch {
+      setError('Network error — try again');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto pb-12 space-y-4 animate-in fade-in duration-200">
@@ -65,6 +148,13 @@ export default function VerificationPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
       {/* 2. Compact Step Indicator */}
       <div className="bg-card border border-border/60 rounded-xl p-3 shadow-xs">
         <div className="flex items-center justify-between max-w-md mx-auto">
@@ -73,14 +163,13 @@ export default function VerificationPage() {
             { step: 2, title: 'Documents', icon: FileText },
             { step: 3, title: 'Payout Account', icon: CreditCard },
           ].map((s) => {
-            const Icon = s.icon;
             const isCompleted = currentStep > s.step;
             const isCurrent = currentStep === s.step;
             return (
               <div
                 key={s.step}
                 className="flex items-center gap-2 cursor-pointer"
-                onClick={() => !isSubmitted && setCurrentStep(s.step as any)}
+                onClick={() => !hasSubmitted && setCurrentStep(s.step as 1 | 2 | 3)}
               >
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[11px] transition-colors ${
@@ -107,21 +196,40 @@ export default function VerificationPage() {
       </div>
 
       {/* 3. Form Wizard Content */}
-      {isSubmitted ? (
+      {hasSubmitted ? (
         <div className="bg-card border border-border/60 rounded-xl p-6 sm:p-8 text-center space-y-4 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${
+            isVerified ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+          }`}>
+            {isVerified ? <CheckCircle2 className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-foreground">KYC Submitted for Review</h2>
+            <h2 className="text-base sm:text-lg font-bold text-foreground">
+              {isVerified ? 'Your Store is Verified!' : 'KYC Submitted for Review'}
+            </h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              Your business and identity documents have been submitted to the Dreamvally Compliance Team. Review typically takes 12–24 business hours.
+              {isVerified
+                ? 'Your identity has been confirmed. You now enjoy full seller privileges.'
+                : 'Your identity documents have been submitted to the Dreamvally Compliance Team. Review typically takes 12–24 business hours.'}
             </p>
           </div>
 
-          <div className="p-3 rounded-lg bg-muted border border-border max-w-xs mx-auto text-xs text-left space-y-1">
-            <p className="font-semibold text-foreground">Reference: <span className="font-mono text-emerald-600">KYC-DF-2026-904</span></p>
-            <p className="text-[11px] text-muted-foreground">Notification will be sent via SMS & Email upon approval.</p>
+          {/* Document status */}
+          <div className="p-3 rounded-lg bg-muted border border-border max-w-xs mx-auto text-xs text-left space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">NID Front</span>
+              {nidFront ? <span className="text-emerald-600 font-semibold">✓ Attached</span> : <span className="text-muted-foreground">—</span>}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">NID Back</span>
+              {nidBack ? <span className="text-emerald-600 font-semibold">✓ Attached</span> : <span className="text-muted-foreground">—</span>}
+            </div>
+            {sellerType === 'business' && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Trade License</span>
+                {tradeLicenseUrl ? <span className="text-emerald-600 font-semibold">✓ Attached</span> : <span className="text-muted-foreground">—</span>}
+              </div>
+            )}
           </div>
 
           <div className="pt-2">
@@ -241,37 +349,42 @@ export default function VerificationPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="border border-dashed border-border/80 rounded-lg p-4 text-center hover:bg-muted/30 cursor-pointer transition-colors">
-                    <UploadCloud className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
-                    <p className="text-xs font-medium text-foreground">Upload NID (Front)</p>
-                    <p className="text-[10px] text-muted-foreground">JPG, PNG or PDF up to 5MB</p>
-                    <span className="mt-1 inline-block text-[10px] font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded">nid_front.jpg attached</span>
-                  </div>
-
-                  <div className="border border-dashed border-border/80 rounded-lg p-4 text-center hover:bg-muted/30 cursor-pointer transition-colors">
-                    <UploadCloud className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
-                    <p className="text-xs font-medium text-foreground">Upload NID (Back)</p>
-                    <p className="text-[10px] text-muted-foreground">JPG, PNG or PDF up to 5MB</p>
-                    <span className="mt-1 inline-block text-[10px] font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded">nid_back.jpg attached</span>
-                  </div>
+                  <ImageUpload
+                    label="NID (Front) *"
+                    value={nidFront}
+                    onChange={setNidFront}
+                    aspect="aspect-[3/2]"
+                    hint="JPG or PNG up to 5MB — all corners visible"
+                  />
+                  <ImageUpload
+                    label="NID (Back)"
+                    value={nidBack}
+                    onChange={setNidBack}
+                    aspect="aspect-[3/2]"
+                    hint="JPG or PNG up to 5MB"
+                  />
                 </div>
 
                 {sellerType === 'business' && (
                   <div className="pt-2 space-y-2 border-t border-border/60">
-                    <label className="block text-xs font-medium text-foreground mb-1">
-                      Trade License / Commercial CR Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={tradeLicenseNo}
-                      onChange={(e) => setTradeLicenseNo(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg border border-border/70 bg-background text-xs font-mono font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                    <div className="border border-dashed border-border/80 rounded-lg p-3 text-center hover:bg-muted/30 cursor-pointer transition-colors">
-                      <UploadCloud className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
-                      <p className="text-xs font-medium text-foreground">Upload Trade License Copy</p>
-                      <p className="text-[10px] text-muted-foreground">Current renewal certificate (PDF/JPG)</p>
-                      <span className="mt-1 inline-block text-[10px] font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.2 rounded">trade_license_2026.pdf attached</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-foreground">
+                          Trade License Copy *
+                        </span>
+                        <ImageUpload
+                          label=""
+                          value={tradeLicenseUrl}
+                          onChange={setTradeLicenseUrl}
+                          aspect="aspect-[3/2]"
+                          hint="Current renewal certificate (JPG/PNG/PDF image)"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <p className="text-[11px] text-muted-foreground pb-3">
+                          Required for registered businesses. Upload the latest renewal certificate showing license number, issue and expiry dates.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -369,9 +482,11 @@ export default function VerificationPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
+                  disabled={submitting}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors shadow-xs disabled:opacity-60"
                 >
-                  <span>Submit for Verification</span>
+                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{submitting ? 'Submitting...' : 'Submit for Verification'}</span>
                   <Check className="w-3.5 h-3.5" />
                 </button>
               </div>

@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { 
   ChevronRight, 
   MapPin, 
@@ -17,13 +16,15 @@ import {
   Share2,
   Heart,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Loader2
 } from 'lucide-react';
 import { 
   getProductById, 
   getRelatedProducts, 
   CatalogProduct 
 } from '@/lib/catalogData';
+import { fetchListingById } from '@/lib/api';
 import ProductGallery from '@/components/product/ProductGallery';
 import SellerActionCard from '@/components/product/SellerActionCard';
 import MakeOfferModal from '@/components/product/MakeOfferModal';
@@ -36,9 +37,38 @@ interface ProductPageProps {
 export default function ProductDetailPage({ params }: ProductPageProps) {
   const resolvedParams = use(params);
   const productId = resolvedParams.id;
-  const product = getProductById(productId);
 
+  // Try DB first (via API), fall back to static catalog id (mob-1 etc.)
+  const [product, setProduct] = useState<CatalogProduct | null>(() => getProductById(productId) ?? null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    fetchListingById(productId)
+      .then((dbProduct) => {
+        if (!cancelled && dbProduct) setProduct(dbProduct);
+      })
+      .catch(() => {
+        // keep catalog fallback already set in useState initializer
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
+
+  if (isLoading && !product) {
+    return (
+      <main className="w-full min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-[#07130e]">
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+        <p className="text-sm text-gray-500 mt-3">Loading product...</p>
+      </main>
+    );
+  }
 
   if (!product) {
     return (

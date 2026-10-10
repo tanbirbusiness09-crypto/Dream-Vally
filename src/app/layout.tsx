@@ -48,6 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className={`${plusJakartaSans.variable} ${outfit.variable} ${hindSiliguri.variable} min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/20 selection:text-on-surface w-full max-w-full overflow-x-hidden`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light" enableSystem={false}>

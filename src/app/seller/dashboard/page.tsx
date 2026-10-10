@@ -1,118 +1,134 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
+import { Loader2 } from 'lucide-react';
 import {
   TrendingUp,
   ShoppingBag,
   Package,
   Star,
   Plus,
-  ExternalLink,
   ArrowUpRight,
-  Clock,
   CheckCircle2,
   AlertTriangle,
   ChevronRight,
   Boxes,
   Store,
-  Wallet,
-  ArrowRight
+  Wallet
 } from 'lucide-react';
+
+const timeAgo = (iso: string) => {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? 'Yesterday' : `${days}d ago`;
+};
 
 export default function SellerDashboardPage() {
   const [dateRange, setDateRange] = useState<'today' | '7d' | '30d' | 'year'>('7d');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const { data: session } = useSession();
+  const shopSlug =
+    (session?.user as { shopSlug?: string | null } | undefined)?.shopSlug || '';
 
-  // Weekly Revenue Data for Compact Sparkline Bar Chart
-  const weeklyData = [
-    { day: 'Sat', amount: '৳ 38k', height: '52%' },
-    { day: 'Sun', amount: '৳ 52k', height: '70%' },
-    { day: 'Mon', amount: '৳ 44k', height: '60%' },
-    { day: 'Tue', amount: '৳ 68k', height: '90%' },
-    { day: 'Wed', amount: '৳ 49k', height: '65%' },
-    { day: 'Thu', amount: '৳ 59k', height: '80%' },
-    { day: 'Fri', amount: '৳ 71k', height: '100%' },
-  ];
+  // Real stats from database
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [stats, setStats] = useState({
+    totalListings: 0,
+    activeListings: 0,
+    draftListings: 0,
+    lowStockCount: 0,
+    totalStock: 0,
+    totalViews: 0,
+    ordersCount: 0,
+    totalRevenue: 0,
+    avgOrderValue: 0,
+    availableBalance: 0,
+    sellerRating: 5,
+    totalReviews: 0,
+    isKycVerified: false,
+  });
+  type RecentOrder = {
+    id: string;
+    product: string;
+    customer: string;
+    location: string;
+    amount: number;
+    status: string;
+    createdAt: string;
+  };
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [topProducts, setTopProducts] = useState<
+    { name: string; stock: number; views: number; image: string }[]
+  >([]);
+  const [weeklyData, setWeeklyData] = useState<{ day: string; amount: string; height: string }[]>([]);
 
-  const recentOrders = [
-    {
-      id: '#ORD-9821',
-      product: 'Exclusive Silk Embroidered Panjabi',
-      customer: 'Kamrul Hasan',
-      location: 'Dhaka',
-      amount: '৳ 3,700',
-      paymentMethod: 'bKash',
-      status: 'Pending',
-      time: '12m ago',
-      image: '/assets/products/prod_mens_panjabi.jpg',
-    },
-    {
-      id: '#ORD-9820',
-      product: 'iPhone 15 Pro Max (Titanium)',
-      customer: 'Sultan Al-Otaibi',
-      location: 'Riyadh',
-      amount: '﷼ 4,450',
-      paymentMethod: 'Mada',
-      status: 'Processing',
-      time: '1h ago',
-      image: '/assets/products/prod_iphone15.jpg',
-    },
-    {
-      id: '#ORD-9819',
-      product: 'Yamaha R15 V4 Carbon Parts',
-      customer: 'Tanvir Ahmed',
-      location: 'Chittagong',
-      amount: '৳ 8,500',
-      paymentMethod: 'Nagad',
-      status: 'Shipped',
-      time: 'Yesterday',
-      image: '/assets/products/prod_yamaha_r15.jpg',
-    },
-    {
-      id: '#ORD-9818',
-      product: 'Leather Executive Wallet',
-      customer: 'Farhan Kabir',
-      location: 'Dhaka',
-      amount: '৳ 1,450',
-      paymentMethod: 'Visa',
-      status: 'Delivered',
-      time: '2d ago',
-      image: '/assets/categories/cat_electronics.jpg',
-    },
-  ];
+  useEffect(() => {
+    fetch('/api/seller/stats')
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json) => {
+        setStats(json.stats);
+        setRecentOrders(json.recentOrders || []);
+        setTopProducts(json.topListings || []);
+        setWeeklyData(
+          (json.weeklyChart || []).map((c: { day: string; amount: string; height: string }) => ({
+            day: c.day,
+            amount: c.amount,
+            height: c.height,
+          }))
+        );
+      })
+      .catch(() => setLoadError('Could not load dashboard stats from database'))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const topProducts = [
-    {
-      name: 'Exclusive Silk Panjabi',
-      sales: 42,
-      revenue: '৳ 1,55,400',
-      stock: 14,
-      image: '/assets/products/prod_mens_panjabi.jpg',
-    },
-    {
-      name: 'iPhone 15 Pro Max',
-      sales: 28,
-      revenue: '৳ 38,64,000',
-      stock: 3,
-      image: '/assets/products/prod_iphone15.jpg',
-    },
-    {
-      name: 'MacBook Air M2',
-      sales: 19,
-      revenue: '৳ 23,56,000',
-      stock: 0,
-      image: '/assets/products/prod_macbook_m2.jpg',
-    },
-    {
-      name: 'Corolla Cross Filter',
-      sales: 15,
-      revenue: '৳ 72,500',
-      stock: 32,
-      image: '/assets/products/prod_toyota_corolla.jpg',
-    },
-  ];
+  const formatMoney = (n: number) => `৳ ${Math.round(n).toLocaleString('en-IN')}`;
+
+  const statusLabel = (s: string): string =>
+    ({
+      PENDING_PAYMENT: 'Pending',
+      PAID_ESCROW: 'Processing',
+      SHIPPED: 'Shipped',
+      OUT_FOR_DELIVERY: 'Shipped',
+      DELIVERED: 'Delivered',
+      COMPLETED: 'Delivered',
+      CANCELLED: 'Cancelled',
+      DISPUTED: 'Disputed',
+    }[s] || s);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-2">
+        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+        <p className="text-xs text-muted-foreground font-medium">Loading dashboard from database...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <AlertTriangle className="w-6 h-6 text-amber-500" />
+        <p className="text-xs text-muted-foreground">{loadError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-12 max-w-7xl mx-auto space-y-5 animate-in fade-in duration-200">
@@ -126,7 +142,7 @@ export default function SellerDashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           {/* Compact Period Switcher */}
           <div className="inline-flex p-0.5 rounded-lg bg-surface-container border border-outline-variant text-xs font-semibold">
             {[
@@ -137,7 +153,7 @@ export default function SellerDashboardPage() {
             ].map((p) => (
               <button
                 key={p.id}
-                onClick={() => setDateRange(p.id as any)}
+                onClick={() => setDateRange(p.id as 'today' | '7d' | '30d' | 'year')}
                 className={`px-2.5 py-1 rounded-md transition-all ${
                   dateRange === p.id
                     ? 'bg-surface text-foreground shadow-xs font-bold'
@@ -151,7 +167,7 @@ export default function SellerDashboardPage() {
 
           <Link
             href="/seller/add-product"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00895e] hover:bg-[#00744f] text-white text-xs font-bold transition-all shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00895e] hover:bg-[#00744f] text-white text-xs font-bold transition-all shadow-xs flex-1 sm:flex-initial justify-center"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
             <span>Add Product</span>
@@ -168,24 +184,24 @@ export default function SellerDashboardPage() {
             <span>Gross Revenue</span>
             <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          <div className="text-xl font-bold text-foreground">৳ 3,45,200</div>
+          <div className="text-xl font-bold text-foreground">{formatMoney(stats.totalRevenue)}</div>
           <div className="mt-2 flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
             <ArrowUpRight className="w-3 h-3 stroke-[2.5]" />
-            <span>+14.2%</span>
-            <span className="text-muted-foreground font-normal">vs prev period</span>
+            <span>{stats.ordersCount} orders</span>
+            <span className="text-muted-foreground font-normal">all time</span>
           </div>
         </div>
 
         {/* Active Orders */}
         <div className="bg-surface-container-lowest border border-outline-variant/80 rounded-xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-muted-foreground text-xs mb-1.5">
-            <span>Active Orders</span>
+            <span>Total Orders</span>
             <ShoppingBag className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-xl font-bold text-foreground">18</div>
+          <div className="text-xl font-bold text-foreground">{stats.ordersCount}</div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-blue-600 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-            <span>5 pending shipment</span>
+            <span>{stats.avgOrderValue > 0 ? `Avg ${formatMoney(stats.avgOrderValue)}` : 'No orders yet'}</span>
           </div>
         </div>
 
@@ -195,10 +211,10 @@ export default function SellerDashboardPage() {
             <span>Total Listings</span>
             <Package className="w-3.5 h-3.5 text-purple-600" />
           </div>
-          <div className="text-xl font-bold text-foreground">124</div>
+          <div className="text-xl font-bold text-foreground">{stats.totalListings}</div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-            <span>3 low stock items</span>
+            <span>{stats.lowStockCount} low stock items</span>
           </div>
         </div>
 
@@ -208,9 +224,9 @@ export default function SellerDashboardPage() {
             <span>Store Rating</span>
             <Star className="w-3.5 h-3.5 text-[#D4AF37] fill-[#D4AF37]" />
           </div>
-          <div className="text-xl font-bold text-foreground">4.9 <span className="text-xs font-normal text-muted-foreground">/ 5.0</span></div>
+          <div className="text-xl font-bold text-foreground">{stats.sellerRating.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">/ 5.0</span></div>
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span>148 customer reviews</span>
+            <span>{stats.totalReviews} customer reviews</span>
           </div>
         </div>
 
@@ -222,17 +238,14 @@ export default function SellerDashboardPage() {
         {/* Left: Compact Sales Velocity (2 Cols) */}
         <div className="lg:col-span-2 bg-surface-container-lowest border border-outline-variant/80 rounded-xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
               <div>
                 <h3 className="font-bold text-sm text-foreground">Sales Velocity</h3>
-                <p className="text-[11px] text-muted-foreground">Daily volume over recent period</p>
+                <p className="text-[11px] text-muted-foreground">Daily order volume · last 7 days (database)</p>
               </div>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground font-medium">
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#00895e]"></span> BD Market (72%)
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#D4AF37]"></span> SA Market (28%)
+                  <span className="w-2 h-2 rounded-full bg-[#00895e]"></span> Orders
                 </span>
               </div>
             </div>
@@ -258,16 +271,16 @@ export default function SellerDashboardPage() {
             </div>
           </div>
 
-          <div className="pt-3 flex items-center justify-between text-xs">
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="text-muted-foreground">
-              Average Order Value: <strong className="text-foreground">৳ 2,450</strong>
+              Average Order Value: <strong className="text-foreground">{formatMoney(stats.avgOrderValue)}</strong>
             </span>
             <button
               onClick={() => setShowWithdrawModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant text-foreground font-semibold text-xs transition-colors"
             >
               <Wallet className="w-3.5 h-3.5 text-[#00895e]" />
-              <span>Available: ৳ 48,500</span>
+              <span>Available: {formatMoney(stats.availableBalance)}</span>
             </button>
           </div>
         </div>
@@ -283,7 +296,7 @@ export default function SellerDashboardPage() {
                 { title: 'Add Product', desc: 'Create new catalog item', href: '/seller/add-product', icon: Plus },
                 { title: 'Orders Pipeline', desc: 'Fulfill & generate slips', href: '/seller/orders', icon: ShoppingBag },
                 { title: 'Inventory Control', desc: 'Barcodes & stock stepper', href: '/seller/products', icon: Boxes },
-                { title: 'Preview Storefront', desc: 'Buyer view of shop', href: '/shop/demo-shop-123', icon: Store, external: true },
+                { title: 'Preview Storefront', desc: 'Buyer view of shop', href: shopSlug ? `/shop/${shopSlug}` : '/shop', icon: Store, external: true },
               ].map((link, idx) => {
                 const Icon = link.icon;
                 return (
@@ -310,8 +323,10 @@ export default function SellerDashboardPage() {
           </div>
 
           <div className="pt-2 border-t border-outline-variant/50 text-[11px] text-muted-foreground flex items-center justify-between">
-            <span>Shop ID: DF-1049</span>
-            <span className="font-medium text-emerald-600">Active Merchant</span>
+            <span>Shop: {shopSlug ? `/${shopSlug}` : '—'}</span>
+            <span className="font-medium text-emerald-600">
+              {stats.isKycVerified ? 'Verified Merchant' : 'Active Seller'}
+            </span>
           </div>
         </div>
 
@@ -348,6 +363,13 @@ export default function SellerDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40 text-xs">
+                {recentOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                      No orders yet — orders will appear here once buyers purchase.
+                    </td>
+                  </tr>
+                )}
                 {recentOrders.map((order, i) => (
                   <tr key={i} className="hover:bg-surface-container/30 transition-colors">
                     <td className="py-2.5">
@@ -359,21 +381,22 @@ export default function SellerDashboardPage() {
                       <p className="text-[10px] text-muted-foreground">{order.location}</p>
                     </td>
                     <td className="py-2.5 font-bold text-foreground">
-                      {order.amount}
+                      {formatMoney(order.amount)}
                     </td>
                     <td className="py-2.5">
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-container text-foreground border border-outline-variant">
-                        {order.paymentMethod}
+                        {timeAgo(order.createdAt)}
                       </span>
                     </td>
                     <td className="py-2.5">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        order.status === 'Pending' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' :
-                        order.status === 'Processing' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400' :
-                        order.status === 'Shipped' ? 'bg-purple-500/10 text-purple-700 dark:text-purple-400' :
+                        statusLabel(order.status) === 'Pending' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' :
+                        statusLabel(order.status) === 'Processing' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400' :
+                        statusLabel(order.status) === 'Shipped' ? 'bg-purple-500/10 text-purple-700 dark:text-purple-400' :
+                        statusLabel(order.status) === 'Cancelled' || statusLabel(order.status) === 'Disputed' ? 'bg-rose-500/10 text-rose-600' :
                         'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                       }`}>
-                        {order.status}
+                        {statusLabel(order.status)}
                       </span>
                     </td>
                     <td className="py-2.5 text-right">
@@ -405,6 +428,9 @@ export default function SellerDashboardPage() {
             </div>
 
             <div className="space-y-2.5">
+              {topProducts.length === 0 && (
+                <p className="text-xs text-muted-foreground py-4 text-center">No products yet</p>
+              )}
               {topProducts.map((prod, i) => (
                 <div
                   key={i}
@@ -412,11 +438,11 @@ export default function SellerDashboardPage() {
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="relative w-8 h-8 rounded-md overflow-hidden bg-surface-container shrink-0 border border-outline-variant/50">
-                      <Image src={prod.image} alt={prod.name} fill className="object-cover" />
+                      <Image src={prod.image} alt={prod.name} fill className="object-cover" sizes="32px" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-xs text-foreground truncate max-w-[120px]">{prod.name}</h4>
-                      <p className="text-[10px] text-muted-foreground">{prod.sales} sold • {prod.revenue}</p>
+                      <p className="text-[10px] text-muted-foreground">{prod.views} views</p>
                     </div>
                   </div>
 
@@ -457,8 +483,8 @@ export default function SellerDashboardPage() {
 
             <div className="p-3 rounded-xl bg-surface-container text-center space-y-0.5">
               <p className="text-[11px] text-muted-foreground font-medium">Ready for Transfer</p>
-              <h2 className="text-2xl font-bold text-foreground">৳ 48,500</h2>
-              <p className="text-[10px] text-emerald-600 font-semibold">Escrow hold: ৳ 12,200</p>
+              <h2 className="text-2xl font-bold text-foreground">{formatMoney(stats.availableBalance)}</h2>
+              <p className="text-[10px] text-emerald-600 font-semibold">From {stats.ordersCount} completed orders</p>
             </div>
 
             <div className="p-2.5 rounded-lg border border-outline-variant text-xs flex items-center justify-between bg-surface">

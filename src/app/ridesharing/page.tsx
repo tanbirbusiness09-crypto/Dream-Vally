@@ -1,4 +1,3 @@
-import { MOCK_DATA } from '@/lib/data';
 import Link from 'next/link';
 
 export default function RideSharingPage({
