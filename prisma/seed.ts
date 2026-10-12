@@ -25,7 +25,9 @@ async function main() {
   console.log('🌱 Seeding Dreamvally database...');
 
   // 1. Demo users (sellers)
-  const demoHash = await bcrypt.hash('demo1234', 10);
+  // Homepage restoration needs catalog sellers, without enabling demo logins.
+  const catalogOnly = process.argv.includes('--catalog-only');
+  const demoHash = catalogOnly ? null : await bcrypt.hash('demo1234', 10);
   const demoSeller = await prisma.user.upsert({
     where: { phoneNumber: '+8801711000001' },
     update: { passwordHash: demoHash },
@@ -315,6 +317,15 @@ async function main() {
         })),
       });
     }
+  }
+
+  if (catalogOnly) {
+    console.log('Catalog restored:', {
+      categories: await prisma.category.count(),
+      listings: await prisma.listing.count(),
+      images: await prisma.listingImage.count(),
+    });
+    return;
   }
 
   // 4. Demo buyer + orders (so seller Orders/Dashboard show real DB data)
