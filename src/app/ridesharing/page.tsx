@@ -1,10 +1,6 @@
 import Link from 'next/link';
 
-export default function RideSharingPage({
-  searchParams,
-}: {
-  searchParams: { from?: string; to?: string; date?: string };
-}) {
+export default function RideSharingPage() {
   // We can mock ridesharing data if it doesn't exist, or just use generic products for now
   // and pretend they are rides. Wait, let's create a custom static list of rides for the demo.
   
