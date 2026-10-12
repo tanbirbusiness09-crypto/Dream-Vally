@@ -365,6 +365,8 @@ function ShopSmartBanner() {
   );
 }
 
+export const revalidate = 60;
+
 export default async function HomePage() {
   const [categories, popularProducts, showcases, deals] = await Promise.all([
     getHomeCategories(),

@@ -267,7 +267,7 @@ export async function getFlashDeals(limit = 3): Promise<FlashDeal[]> {
   });
 }
 
-export async function getHomeShowcases(limit = 4, perCategory = 6): Promise<HomeShowcase[]> {
+export async function getHomeShowcases(limit?: number, perCategory = 6): Promise<HomeShowcase[]> {
   const categories = await prisma.category.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: 'asc' },
